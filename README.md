@@ -1,9 +1,21 @@
 # Mochi 麻吉 · Windows 桌面宠物
 
+一只会陪你、会提醒你的 Windows 桌面宠物 Mochi 安静地待在桌角，看你忙、看你摸鱼。
+累了劝你喝口水，久坐了催你起身，还会陪你 AI 闲聊、按场景冒出心里话——但绝不弹窗打断你。
+
 会看、会记、会陪你玩的 Windows 桌面搭子。一只透明无边框、常驻桌面的小宠物，
 能感知你正在用什么软件、按时提醒你喝水/起身/番茄钟，还能陪你弹琴、被你摸头。
 
-基于 [Mochi 开发素材包 v5](.) 的设计原型与参考形象实现。
+## 📥 下载
+
+| | |
+|---|---|
+| 🌐 官网 | <https://code-outpost.github.io/xiaojian-dev/> |
+| ⬇ 安装版（推荐，带自动更新） | <https://github.com/code-outpost/xiaojian-dev/releases/latest/download/Mochi-Setup-1.0.0.exe> |
+| 📦 便携单文件版 | <https://github.com/code-outpost/xiaojian-dev/releases/latest/download/Mochi-Standalone.exe> |
+| ⤴ 所有版本 | <https://github.com/code-outpost/xiaojian-dev/releases> |
+
+支持 Windows 10 / 11 · 免费 · 安装版可自动更新。
 
 ---
 
