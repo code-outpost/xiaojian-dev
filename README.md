@@ -207,6 +207,10 @@ npm run build:portable
 
 > 脚本默认先把产物构建到纯 ASCII 的临时目录再回填 `dist/`，以绕开中文路径 rcedit 报错；
 > 构建末尾会自动校验并修正 exe 图标（`scripts/fix_exe_icon.py`），确保 7 帧图标正确写入。
+> 最后一步是**代码签名**（`scripts/sign.mjs`）：默认用自签占位证书给所有 exe 加上 Authenticode 签名 + 时间戳。
+> 自签不能消除别人电脑上的 SmartScreen「未知发布者」警告，要正式签名请设 `CERT_PFX` / `CERT_PASSWORD`
+> （或在 CI 配 Azure Trusted Signing），详见 [`docs/RELEASING.md`](docs/RELEASING.md) 第 4 节；
+> 不想签名就 `set SIGN=0`。
 
 ### 三种分发方式（按"打开速度 / 是否单文件"取舍）
 

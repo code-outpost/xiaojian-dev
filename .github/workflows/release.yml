@@ -42,6 +42,26 @@ jobs:
             exit 1
           fi
 
+      # 签名：优先 Azure 云签名（下面的环境变量全配了才会生效）；
+      # 没配 Azure 时退化为「自签占位」，保证每次发版产物都带签名、发布者字段有值。
+      # 若你买了正式证书：把证书转 base64 存成 Secret CERT_BASE64 + CERT_PASSWORD，
+      # 然后把这一步换成解码写盘并导出 CSC_LINK / CSC_KEY_PASSWORD 即可，无需改其它代码。
+      - name: 准备代码签名证书（无 Azure 凭据时用自签占位）
+        if: ${{ secrets.AZURE_CODE_SIGN_ACCOUNT == '' }}
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $pwd = ConvertTo-SecureString -String 'mochi-dev' -Force -AsPlainText
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=A-Jian, O=Mochi, C=CN' `
+            -FriendlyName 'Mochi Code Signing (dev)' `
+            -CertStoreLocation 'Cert:\CurrentUser\My' -KeyAlgorithm RSA -KeyLength 2048 `
+            -HashAlgorithm SHA256 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(3)
+          $pfx = Join-Path $env:RUNNER_TEMP 'mochi-dev.pfx'
+          Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $pwd -Force | Out-Null
+          Add-Content -Path $env:GITHUB_ENV -Value "CSC_LINK=$pfx"
+          Add-Content -Path $env:GITHUB_ENV -Value "CSC_KEY_PASSWORD=mochi-dev"
+          Write-Host "已生成自签占位证书：$pfx"
+
       - name: 构建并发布（nsis 安装版 + portable 便携版）
         run: npx electron-builder --win nsis portable --publish always
         env:

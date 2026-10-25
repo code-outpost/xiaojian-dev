@@ -181,7 +181,30 @@ Partner Center → 创建新应用 → 保留名称 `Mochi 桌面宠物` → 上
 ## 4. 代码签名（消除 SmartScreen「未知发布者」）
 
 未签名的 exe 在用户机器上会被 Windows Defender SmartScreen 拦截，这是分发最大的障碍。
-两条路：
+三条路，从"零成本先把流程跑通"到"彻底消除警告"：
+
+### 方案 0：自签占位（**已内置，默认开启**）
+
+`scripts/sign.mjs` 已经接进 `build.mjs`，构建完自动签，`node build.mjs all` 一条命令到底。
+
+```bat
+:: 仅生成证书（默认落在 build\cert\mochi-dev.pfx，密码 mochi-dev）
+node scripts/sign.mjs --ensure
+
+:: 把自签证书装进「当前用户 → 受信任根 / 受信任发布者」，本机就能看到"签名已通过验证"
+set CERT_TRUST=1
+node scripts/sign.mjs --trust
+
+:: 单独签 / 单独验
+node scripts/sign.mjs --sign dist\Mochi-Standalone.exe
+node scripts/sign.mjs --verify dist\Mochi-Standalone.exe
+```
+
+- 签名带 **RFC3161 时间戳**（DigiCert），证书过期后签名依然有效。
+- ⚠️ **局限**：自签证书不在 Windows 信任库里，别人电脑上仍然会提示"未知发布者"。
+  它的价值是把签名流水线跑通（发布者字段、时间戳、构建集成全部验证过），
+  等你拿到真证书，只需设 `CERT_PFX` / `CERT_PASSWORD` 两个环境变量重新构建即可，代码一行不用改。
+- ⚠️ `*.pfx` 已在 `.gitignore` 里，不会误提交。
 
 ### 方案 A：Azure Trusted Signing（推荐，纯云端，无 USB token）
 

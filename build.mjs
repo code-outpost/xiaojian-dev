@@ -31,11 +31,17 @@
  * Azure 云签名（Azure Trusted Signing）可选，设置以下环境变量后自动启用：
  *   AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
  *   AZURE_CODE_SIGN_ACCOUNT / AZURE_CERT_PROFILE / AZURE_ENDPOINT(可选)
+ *
+ * 代码签名（最后一个环节，必须在所有 exe 改完之后做）：
+ *   默认开启。有 build/cert/mochi-dev.pfx（自签占位）就用它，没有则自动生成；
+ *   想用真证书：set CERT_PFX=你的.pfx & set CERT_PASSWORD=密码
+ *   想关闭签名：set SIGN=0
  */
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
+import { signFiles, certPath, isSelfSigned } from './scripts/sign.mjs';
 
 const mode = process.argv[2] || 'dir';
 const projectRoot = process.cwd();
@@ -279,6 +285,24 @@ function syncDir(srcDir, dstDir) {
     }
   }
 } // ← 结束目标循环
+
+/* ---------------- 代码签名（必须放在最后：签完再改文件签名就作废） ---------------- */
+// Azure 云签名由 electron-builder 在打包时完成，这里不能重复签（会覆盖掉真签名）
+const DO_SIGN = !DO_AZURE_SIGN && !String(process.env.SIGN || '1').match(/^0|false$/i);
+if (DO_SIGN) {
+  const exes = copied.filter(f => /\.exe$/i.test(f) && !/\.(appx|msix)$/i.test(f));
+  const dirExe = path.join(distDir, 'Mochi', 'Mochi.exe');
+  if (fs.existsSync(dirExe)) exes.push(dirExe);
+  if (exes.length) {
+    console.log('\n[build] ==== 代码签名 ====');
+    console.log(`[build] 证书：${certPath()}${isSelfSigned() ? '（自签占位，别人电脑仍会提示未知发布者）' : ''}`);
+    const r = signFiles(exes);
+    if (!r.ok) {
+      console.warn('[build] ⚠️ 以下文件未签上：' + (r.skipped.join(', ') || r.error || '未知原因'));
+      console.warn('   最常见原因是 Mochi 正在运行、exe 被占用，退出后重跑本命令即可补签。');
+    }
+  }
+}
 
 /* ---------------- 产物清单 ---------------- */
 console.log('\n[build] 完成 ✔');
