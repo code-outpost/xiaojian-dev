@@ -70,7 +70,7 @@
       "artifactName": "Mochi-Setup-${version}.exe"
     },
     "portable": {
-      "artifactName": "Mochi-Standalone-${version}.exe"
+      "artifactName": "Mochi-Standalone.exe"
     },
     "publish": [
       {

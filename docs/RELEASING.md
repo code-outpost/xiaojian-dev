@@ -25,6 +25,55 @@
 
 ---
 
+## 0.1 首次上传到 GitHub（代码已在本地提交好，只差推上去）
+
+本地仓库已经 `git init` 并完成首次提交（分支 `main`），`.gitignore` 已排除
+`node_modules/`、`dist/`、自检临时数据等，实际上传约 11MB。
+
+1. 打开 https://github.com/new → Repository name 填 `mochi-desktop-pet` →
+   **不要**勾选 "Add a README file"（否则会和本地冲突）→ Create repository。
+2. 在本项目根目录（`Mochi/`）执行，把 `你的用户名` 换成实际值：
+
+```bat
+git remote add origin https://github.com/你的用户名/mochi-desktop-pet.git
+git push -u origin main
+```
+
+3. 如果推送时要密码：GitHub 早已不支持账号密码，要用 **Personal Access Token** 当密码
+   （Settings → Developer settings → Personal access tokens → Tokens (classic) → 勾 `repo`）。
+4. 推完把下面三处的 `xiaojian-dev/mochi-desktop-pet` 改成你自己的仓库：
+   - `package.json` → `build.publish.owner` / `repo`
+   - `website/index.html` 底部脚本里的 `REPO` 常量（**只此一处**，下载按钮全靠它生成）
+   - 本文件的命令示例（无所谓，只是文档）
+
+### 让「下载」真的能下
+
+官网页面的按钮指向 `releases/latest/download/...`，**必须存在一个已发布的 Release 才会生效**。
+两条路，任选其一：
+
+**A. 全自动（推荐，配置一次之后每版都省事）**
+仓库 Settings → Actions → General → Workflow permissions 选 **Read and write permissions** → Save。
+以后只需：改 `version` → `git commit` → `git tag v1.0.1` → `git push origin main --tags`，
+`.github/workflows/release.yml` 会自动构建并把安装包 + `latest.yml` 传到 Release。
+
+**B. 手动上传（第一次最直观，5 分钟）**
+1. 仓库首页右侧 → **Releases** → **Draft a new release**
+2. Tag 填 `v1.0.0`（要和 `package.json` 的 version 对应）→ 标题填 `Mochi v1.0.0`
+3. 把 `dist/Mochi-Setup-1.0.0.exe` 和 `dist/Mochi-Standalone.exe` 拖到附件区
+4. 点 **Publish release** → 官网按钮立刻可用
+
+### 让官网能打开
+
+Settings → Pages → Build and deployment → Source 选 **GitHub Actions**。
+推送到 main 后 `.github/workflows/pages.yml` 会自动把 `website/` 发布成
+`https://你的用户名.github.io/mochi-desktop-pet/`（首次约 1 分钟生效）。
+
+> ⚠️ 一个隐藏坑：Release 附件名必须和官网链接里的文件名**完全一致**。
+> 安装版是 `Mochi-Setup-<版本>.exe`（带版本号），便携版固定叫 `Mochi-Standalone.exe`（不带版本号），
+> 这是特意设计的——便携版名字永久稳定，老链接不会失效。
+
+---
+
 ## 1. 发一个版本（GitHub Releases + 自动更新）
 
 electron-updater 已经接好：客户端启动 20 秒后检查一次，之后每 6 小时一次；
@@ -34,7 +83,8 @@ electron-updater 已经接好：客户端启动 20 秒后检查一次，之后�
 
 1. **改版本号**（必须递增，否则用户端不会提示）：
    `package.json` → `"version": "1.0.1"`
-2. **同步官网下载链接**：`website/index.html` 里 `Mochi-Setup-x.y.z.exe` 改成新版本号。
+2. **同步官网版本号**：`website/index.html` 底部脚本的 `VERSION` 常量改成新版本号
+   （只需改这一处，下载按钮全部由它生成）。
 3. **构建并自动上传**：
 
 ```bat
@@ -48,8 +98,10 @@ node build.mjs all
 $env:GH_TOKEN="ghp_你的Token"; node build.mjs all
 ```
 
-electron-builder 会先打包，再把 `Mochi-Setup-<ver>.exe`、`Mochi-Standalone-<ver>.exe`
+electron-builder 会先打包，再把 `Mochi-Setup-<ver>.exe`、`Mochi-Standalone.exe`
 和**关键文件 `latest.yml`**（electron-updater 靠它判断是否有新版）一起传到 Release。
+> 便携版故意不带版本号，这样官网/网盘上的旧链接永远不会失效。
+> 同时会生成 `Mochi-Setup-<ver>.exe.blockmap`，它配合 latest.yml 实现**增量下载**，别删。
 
 4. 到 GitHub 仓库 → Releases，把刚生成的草稿**补全更新日志后点 Publish**。
    > 只要 `latest.yml` 存在，老用户下次启动就会收到更新提示。
@@ -179,7 +231,7 @@ node build.mjs all
 ## 6. 发版检查清单
 
 - [ ] `package.json` version 已递增
-- [ ] `website/index.html` 下载链接版本号已同步
+- [ ] `website/index.html` 的 `VERSION` 常量已同步
 - [ ] `GH_TOKEN` 已设置 → `node build.mjs all`
 - [ ] GitHub Release 已 Publish（含 `latest.yml`）
 - [ ] 官网已部署并可下载

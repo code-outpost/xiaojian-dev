@@ -193,10 +193,9 @@
     <h2>免费下载 Mochi</h2>
     <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 自动更新</p>
     <div class="dl-btns">
-      <!-- ⚠️ 每次发版：把下面的 Mochi-Setup-1.0.0.exe 改成新版本号，与 package.json 的 version 保持一致 -->
-      <a class="btn btn-primary" href="https://github.com/xiaojian-dev/mochi-desktop-pet/releases/latest/download/Mochi-Setup-1.0.0.exe">⬇ 安装版（推荐）</a>
-      <a class="btn btn-ghost" href="https://github.com/xiaojian-dev/mochi-desktop-pet/releases/latest/download/Mochi-Standalone.exe">📦 便携单文件版</a>
-      <a class="btn btn-ghost" href="https://github.com/xiaojian-dev/mochi-desktop-pet/releases">⤴ 所有版本 / GitHub</a>
+      <a class="btn btn-primary" href="#" data-dl="setup">⬇ 安装版（推荐）</a>
+      <a class="btn btn-ghost" href="#" data-dl="portable">📦 便携单文件版</a>
+      <a class="btn btn-ghost" href="#" data-dl="releases">⤴ 所有版本 / GitHub</a>
     </div>
     <p class="dl-note">
       安装版装一次、启动最快、可自动更新；便携版是单个 <code>.exe</code>，拷到任何地方双击即用。<br/>
@@ -226,9 +225,28 @@
 
 <footer class="wrap">
   © <span id="year"></span> Mochi · 由独立开发者小阿健打造 · 用 ❤️ 与 Electron 写成<br/>
-  <a href="https://github.com/xiaojian-dev/mochi-desktop-pet">GitHub</a> · 反馈邮箱 2931424924@qq.com
+  <a href="#" data-repo>GitHub</a> · 反馈邮箱 2931424924@qq.com
 </footer>
 
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script>
+/* ============================================================
+ * ⚠️ 只需要改下面两行：
+ *    REPO    = 你的 GitHub 用户名/仓库名
+ *    VERSION = 当前版本号（要和 package.json 的 version 一致）
+ * ============================================================ */
+const REPO = 'xiaojian-dev/mochi-desktop-pet';
+const VERSION = '1.0.0';
+
+const BASE = 'https://github.com/' + REPO;
+document.querySelectorAll('[data-dl]').forEach(function (a) {
+  const k = a.dataset.dl;
+  if (k === 'setup') a.href = BASE + '/releases/latest/download/Mochi-Setup-' + VERSION + '.exe';
+  else if (k === 'portable') a.href = BASE + '/releases/latest/download/Mochi-Standalone.exe';
+  else a.href = BASE + '/releases';
+});
+document.querySelectorAll('[data-repo]').forEach(function (a) { a.href = BASE; });
+
+document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
