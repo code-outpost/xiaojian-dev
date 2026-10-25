@@ -206,6 +206,27 @@ node scripts/sign.mjs --verify dist\Mochi-Standalone.exe
   等你拿到真证书，只需设 `CERT_PFX` / `CERT_PASSWORD` 两个环境变量重新构建即可，代码一行不用改。
 - ⚠️ `*.pfx` 已在 `.gitignore` 里，不会误提交。
 
+#### 自签与自动更新：必须知道的验签策略
+
+`electron-updater` 默认的验签要求安装包证书**整条链被系统信任**
+（`Get-AuthenticodeSignature` 的 `Status` 必须是 `Valid`）。自签证书在任何用户机器上都不满足，
+表现是：**下载到 100% 后立刻被判失败**，报
+`New version x is not signed by the application owner`，用户只看到"正在悄悄下载"却永远装不上。
+
+因此 `main.js` 的 `applyUpdaterPolicies()` 把验签换成**宽松但保留身份校验**的实现：
+
+| 检查项 | 默认策略 | 我们的策略 |
+| --- | --- | --- |
+| exe 是否带 Authenticode 签名 | 要求 | 要求（无签名照样拒绝） |
+| 证书链是否被系统信任 | 要求 | **不要求** |
+| 签名主体 CN 是否等于 `publisherName` | 要求 | 要求（`app-update.yml` 里是 `A-Jian`） |
+| latest.yml 里的 sha512 | 校验 | 校验（防篡改仍有保障） |
+
+换成真证书（Azure / OV / EV）后这段**无需改动**，真证书同样满足上述条件。
+
+> ⚠️ **v1.0.1 / v1.0.2 的包已固化旧逻辑，无法自动升级到修复后的版本**，
+> 用户需要手动下载安装一次，之后的版本更新才能全自动。
+
 ### 方案 A：Azure Trusted Signing（推荐，纯云端，无 USB token）
 
 已接进 `build.mjs`：设置好环境变量后**自动启用**，无需改代码。

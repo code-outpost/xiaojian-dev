@@ -2118,11 +2118,103 @@ async function sendFeedback(payload) {
  */
 /* --- 更新提示统一走设置页的应用内弹窗（同 #fbModalMask，不再用系统原生对话框） --- */
 let autoUpdaterRef = null;
+
+/**
+ * 验签策略（关键，改之前先读完）
+ * ------------------------------------------------------------------
+ * electron-updater 默认的验签要求安装包证书「整条链被系统信任」——
+ * 它会跑 Get-AuthenticodeSignature，只有 Status === Valid 才继续。
+ * 我们用自签证书，在任何用户机器上都不可能满足，于是表现为：
+ *   下载到 100% → 验签失败 → "New version x is not signed by the
+ *   application owner" → 永远装不上，而用户只看到"正在悄悄下载"。
+ *
+ * 这里换成「宽松但保留身份校验」：
+ *   · 仍然要求 exe 带 Authenticode 签名（没签名照样拒绝）
+ *   · 签名主体 CN 必须等于 app-update.yml 里的 publisherName
+ *   · 但不要求证书链被系统信任
+ * electron-updater 本身还会校验 latest.yml 里的 sha512，篡改风险可控。
+ * 将来换成真证书（OV / EV / Azure Trusted Signing）这段不用改。
+ */
+let updaterPolicyApplied = false;
+function applyUpdaterPolicies(autoUpdater) {
+  if (!autoUpdater || updaterPolicyApplied) return;
+  updaterPolicyApplied = true;
+
+  try {
+    if ('verifyUpdateCodeSignature' in autoUpdater) {
+      autoUpdater.verifyUpdateCodeSignature = (publisherNames, file) => new Promise(resolve => {
+        const names = (Array.isArray(publisherNames) ? publisherNames : [publisherNames])
+          .filter(n => n && String(n).trim());
+        if (!names.length) return resolve(null); // 没配 publisherName 时按官方语义跳过
+        const escaped = String(file).replace(/'/g, "''");
+        const { execFile } = require('node:child_process');
+        execFile(
+          'powershell.exe',
+          ['-NoProfile', '-NonInteractive', '-InputFormat', 'None', '-Command',
+            `$OutputEncoding = [Console]::OutputEncoding = [Text.Encoding]::UTF8; ` +
+            `Get-AuthenticodeSignature -LiteralPath '${escaped}' | ConvertTo-Json -Compress`],
+          { timeout: 20000, windowsHide: true },
+          (err, stdout) => {
+            const raw = String(stdout || '').trim();
+            if (!raw) {
+              diag('[updater] 读取签名失败：' + ((err && err.message) || '无输出'));
+              return resolve('读不到安装包的签名信息，已停止安装');
+            }
+            let info = null;
+            try { info = JSON.parse(raw); } catch (_) { info = null; }
+            const subject = (info && info.SignerCertificate && info.SignerCertificate.Subject) || '';
+            if (!subject) return resolve('安装包没有代码签名，已停止安装');
+            const ok = names.some(n => {
+              const m = /CN=([^,]+)/i.exec(String(n));
+              const cn = (m ? m[1] : String(n)).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              return new RegExp('CN=' + cn + '(\\s*,|\\s*$)', 'i').test(subject);
+            });
+            if (ok) {
+              diag('[updater] 签名主体校验通过（' + subject + '；按宽松策略不校验信任链）');
+              return resolve(null);
+            }
+            diag('[updater] 签名主体不匹配：期望 ' + names.join(' / ') + '，实际 ' + subject);
+            resolve('安装包签名与发布者不一致，已停止安装');
+          }
+        );
+      });
+    }
+  } catch (e) {
+    diag('[updater] 无法设置验签策略：' + ((e && e.message) || e));
+  }
+
+  // 差分下载要上一版的 installer.exe 缓存，我们从不保留，直接全量更稳
+  try { autoUpdater.disableDifferentialDownload = true; } catch (_) {}
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+}
+
 function getAutoUpdater() {
   if (autoUpdaterRef) return autoUpdaterRef;
-  try { ({ autoUpdater: autoUpdaterRef } = require('electron-updater')); }
-  catch (e) { autoUpdaterRef = null; diag('自动更新模块未就绪：' + ((e && e.message) || e)); }
+  try {
+    ({ autoUpdater: autoUpdaterRef } = require('electron-updater'));
+    applyUpdaterPolicies(autoUpdaterRef);
+  } catch (e) { autoUpdaterRef = null; diag('自动更新模块未就绪：' + ((e && e.message) || e)); }
   return autoUpdaterRef;
+}
+
+/** 把 electron-updater 的英文报错翻译成用户能看懂、能行动的话 */
+function friendlyUpdateError(msg) {
+  const m = String(msg || '');
+  // 我们自己抛的中文原因（已说清楚是签名/主体问题），直接透出
+  if (/^读不到安装包|^安装包没有代码签名|^安装包签名与发布者/.test(m)) {
+    return m + '（可能是安装包下载不完整，重试一次通常就好）\n还不行就到 GitHub Releases 页面手动下载最新版覆盖安装。';
+  }
+  if (/not signed by the application owner|sign verification failed/i.test(m)) {
+    return '安装包签名校验没通过，已停止安装。\n可以到 GitHub Releases 页面手动下载最新版覆盖安装。';
+  }
+  if (/net::|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|socket hang up|status code 5\d\d|ERR_UPDATER_NETWORK/i.test(m)) {
+    return '下载更新时网络中断了，稍后再点一次「检查更新」就行。\n（当前版本照常使用）';
+  }
+  if (/ENOSPC|no space/i.test(m)) {
+    return '磁盘空间不够了，清出一些空间后再试。';
+  }
+  return m + '\n\n当前版本照常使用，可以稍后再试。';
 }
 
 function sendSettings(channel, payload) {
@@ -2156,6 +2248,11 @@ function flushUpdateNotice() {
   if (sendSettings('update:notice', pendingUpdateNotice)) pendingUpdateNotice = null;
 }
 
+/** 用户最近一次主动点「检查更新」的时间；用于决定更新失败要不要弹出来 */
+let lastUpdateAskAt = 0;
+/** 检查/下载进行中，避免重复点按钮并发跑多次 */
+let updateBusy = false;
+
 function initAutoUpdater() {
   if (!app.isPackaged) return;
   const autoUpdater = getAutoUpdater();
@@ -2167,39 +2264,62 @@ function initAutoUpdater() {
     error: m => diag('[updater] ' + m),
     debug: () => {}
   };
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('checking-for-update', () => diag('[updater] 检查中'));
   autoUpdater.on('update-available', info => {
     diag('[updater] 发现新版本 ' + info.version);
+    updateBusy = true;
     sendPet('pet:say', { text: `发现新版本 ${info.version}，正在悄悄下载~`, ms: 6000 });
   });
-  autoUpdater.on('update-not-available', () => diag('[updater] 已是最新版本'));
+  autoUpdater.on('update-not-available', () => {
+    diag('[updater] 已是最新版本');
+    updateBusy = false;
+  });
+  let lastLoggedPct = -10;
   autoUpdater.on('download-progress', p => {
-    diag('[updater] 下载 ' + Math.round(p && p.percent || 0) + '%');
+    const pct = Math.round((p && p.percent) || 0);
+    if (pct >= lastLoggedPct + 10 || pct === 100) {
+      lastLoggedPct = pct;
+      diag('[updater] 下载 ' + pct + '%');
+    }
   });
   autoUpdater.on('update-downloaded', info => {
     diag('[updater] 下载完成 ' + info.version);
+    updateBusy = false;
     notifyUpdate({
       kind: 'success',
       title: '新版本已就绪',
-      text: `v${info.version} 已经下载好了。\n点「立即重启」马上用新版；点「稍后」会在下次退出 Mochi 时自动安装。`,
+      text: `v${info.version} 已经下载好了。\n点「立即重启」会自动装好并重新打开；点「稍后」会在下次退出 Mochi 时自动安装。`,
       buttons: [
         { id: 'restart', label: '立即重启', primary: true },
         { id: 'later', label: '稍后' }
       ]
     });
   });
-  autoUpdater.on('error', err => diag('[updater] 出错：' + ((err && (err.message || err)) || err)));
+  autoUpdater.on('error', err => {
+    const msg = String((err && (err.message || err)) || err);
+    diag('[updater] 出错：' + msg);
+    updateBusy = false;
+    // 后台静默检查（启动 20s / 每 6 小时）时的网络抖动不打扰用户；
+    // 但用户刚点过「检查更新」，或失败原因不是网络（签名/磁盘），必须说出来。
+    const askedRecently = Date.now() - lastUpdateAskAt < 15 * 60 * 1000;
+    const networkish = /net::|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|socket hang up|status code 5\d\d|ERR_UPDATER_NETWORK/i.test(msg);
+    if (!askedRecently && networkish) return;
+    notifyUpdate({
+      kind: 'error',
+      title: '更新没能完成',
+      text: friendlyUpdateError(msg)
+    });
+  });
 
   // 启动 20s 后再检查，避免和首屏抢资源；之后每 6 小时一次
-  setTimeout(() => { autoUpdater.checkForUpdates().catch(e => diag('[updater] 检查失败：' + e.message)); }, 20000);
+  setTimeout(() => { autoUpdater.checkForUpdates().catch(e => diag('[updater] 检查失败：' + ((e && e.message) || e))); }, 20000);
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 3600 * 1000);
 }
 
 /** 托盘 / 设置页「检查更新」：手动触发，结果显示在应用内弹窗里 */
 function checkUpdatesManual() {
+  lastUpdateAskAt = Date.now();
   if (!app.isPackaged) {
     notifyUpdate({
       kind: 'warn',
@@ -2217,12 +2337,22 @@ function checkUpdatesManual() {
     });
     return;
   }
+  if (updateBusy) {
+    notifyUpdate({
+      kind: 'info',
+      title: '正在下载新版本',
+      text: '上一轮还在下载/安装准备中，完成后会自动提醒你重启。'
+    });
+    return;
+  }
   // 检查可能要十几秒，先让宠物说一句，免得点了像没反应
   sendPet('pet:say', { text: '我去看看有没有新版本…', ms: 3000 });
   const cur = app.getVersion();
+  updateBusy = true;
   autoUpdater.checkForUpdates().then(r => {
     const remote = r && r.updateInfo && r.updateInfo.version;
     if (!remote || remote === cur) {
+      updateBusy = false;
       notifyUpdate({
         kind: 'info',
         title: '已是最新版本',
@@ -2232,14 +2362,15 @@ function checkUpdatesManual() {
       notifyUpdate({
         kind: 'info',
         title: `发现新版本 v${remote}`,
-        text: `当前版本 v${cur}。新版本正在后台下载，下好会提醒你重启。`
+        text: `当前版本 v${cur}。新版正在后台下载（约 80MB），装好后会弹出「立即重启」的提示。`
       });
     }
   }).catch(e => {
+    updateBusy = false;
     notifyUpdate({
       kind: 'error',
       title: '检查更新失败',
-      text: String((e && e.message) || e) + '\n可能是网络问题，或还没有发布过新版本。'
+      text: friendlyUpdateError((e && e.message) || e)
     });
   });
 }
@@ -2368,7 +2499,9 @@ function registerIpc() {
       const up = getAutoUpdater();
       if (!up) return { ok: false, error: '自动更新模块未就绪' };
       try { saveConfigNow(); } catch (_) { /* ignore */ }
-      setImmediate(() => up.quitAndInstall());
+      // isSilent=true：静默跑 NSIS 安装器，不弹安装向导；
+      // isForceRunAfter=true：装完自动把新版 Mochi 拉起来
+      setImmediate(() => up.quitAndInstall(true, true));
       return { ok: true };
     }
     return { ok: true };

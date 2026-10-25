@@ -1,0 +1,19 @@
+# 统一在仓库里存 LF，避免不同平台/API 推送造成整文件行尾差异
+* text=auto
+
+# 二进制资源，不做行尾与合并处理
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.zip binary
+*.exe binary
+*.pfx binary
+*.bin binary
+
+# PowerShell 脚本保持 CRLF（Windows PowerShell 5.1 最稳）
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
