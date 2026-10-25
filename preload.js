@@ -20,7 +20,8 @@ const EVENTS = [
   'pet:walk',
   'pet:hi',
   'weather:update',
-  'settings:goto'
+  'settings:goto',
+  'update:notice'
 ];
 
 contextBridge.exposeInMainWorld('mochi', {
@@ -72,6 +73,9 @@ contextBridge.exposeInMainWorld('mochi', {
 
   /* 检查更新（electron-updater） */
   checkUpdate: () => invoke('update:check'),
+  updateAction: action => invoke('update:action', action),
+  // 页面监听注册完成后报到，主进程据此补发暂存的提示（避免新窗口丢消息）
+  uiReady: () => send('ui:ready'),
 
   /* 天气（和风天气；凭据只在主进程加密保存，这里只拿天气结果） */
   weatherGet: () => invoke('weather:get'),

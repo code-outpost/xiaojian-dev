@@ -663,6 +663,15 @@ input[type="time"]:focus { border-color: var(--theme); }
   background: #FDF3E3; color: #D08A18;
   box-shadow: 0 0 0 6px rgba(208, 138, 24, .08);
 }
+/* 中性提示（检查更新这类）：蓝色 info，和 loading 同色系但换成 i 图标 */
+.fb-modal[data-kind="info"] .fb-modal-ico {
+  background: #EAF2FD; color: #3D7EDB;
+  box-shadow: 0 0 0 6px rgba(61, 126, 219, .08);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 30px;
+  padding-right: 2px;
+}
 .fb-modal-title {
   font-size: 16px; font-weight: 800; color: #1B2231; letter-spacing: .01em;
 }

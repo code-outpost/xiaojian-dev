@@ -146,7 +146,8 @@
     fbModalBox.dataset.kind = kind;
     fbModalIco.innerHTML = kind === 'loading'
       ? '<span class="fb-spin"></span>'
-      : kind === 'success' ? '✓' : '!';
+      : kind === 'info' ? 'i'
+        : kind === 'success' ? '✓' : '!';
     fbModalTitle.textContent = (o && o.title) || '';
     fbModalText.textContent = (o && o.text) || '';
     fbModalActions.innerHTML = '';
@@ -1268,6 +1269,33 @@
       }
     });
   }
+
+  /* 更新的所有提示统一走应用内弹窗（外观 = 反馈/确认框），不再用原生 dialog */
+  api.on('update:notice', o => {
+    const opts = o || {};
+    const buttons = (Array.isArray(opts.buttons) && opts.buttons.length)
+      ? opts.buttons
+      : [{ id: 'ok', label: '知道了', primary: true }];
+    if (btnCheckUpdate) btnCheckUpdate.disabled = false;
+    const hint = document.getElementById('aboutUpdateHint');
+    if (hint) hint.textContent = '';
+    showFbModal({
+      kind: opts.kind || 'info',
+      title: opts.title || '检查更新',
+      text: opts.text || '',
+      actions: buttons.map(b => ({
+        label: b.label,
+        primary: !!b.primary,
+        close: true,
+        onClick: () => {
+          // 'ok' / 'later' 只是关掉弹窗；'restart' 才真的要重启安装
+          if (b.id && b.id !== 'ok' && b.id !== 'later') api.updateAction(b.id);
+        }
+      }))
+    });
+  });
+  // 监听已就绪 → 告诉主进程（若打开窗口前触发了更新提示，会在这一刻补发）
+  api.uiReady();
 
   document.getElementById('btnReset').addEventListener('click', async () => {
     const okReset = await appConfirm('恢复默认设置？角色、提醒、天气、AI 都会回到出厂状态（自定义形象与宠物位置会保留）。',

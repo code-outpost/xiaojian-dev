@@ -2116,11 +2116,50 @@ async function sendFeedback(payload) {
  *   改 package.json version → PUBLISH=1 GH_TOKEN=xxx node build.mjs installer
  * electron-updater 会读取 GitHub Releases 里的 latest.yml 比对版本。
  */
+/* --- 更新提示统一走设置页的应用内弹窗（同 #fbModalMask，不再用系统原生对话框） --- */
+let autoUpdaterRef = null;
+function getAutoUpdater() {
+  if (autoUpdaterRef) return autoUpdaterRef;
+  try { ({ autoUpdater: autoUpdaterRef } = require('electron-updater')); }
+  catch (e) { autoUpdaterRef = null; diag('自动更新模块未就绪：' + ((e && e.message) || e)); }
+  return autoUpdaterRef;
+}
+
+function sendSettings(channel, payload) {
+  if (!settingsWin || settingsWin.isDestroyed()) return false;
+  settingsWin.webContents.send(channel, payload);
+  return true;
+}
+
+/**
+ * 把更新提示交给渲染层用 showFbModal 弹出来。
+ * 设置窗口没开就先打开「关于」页（检查更新按钮也在那儿），
+ * 并把提示暂存起来，等页面报到 ui:ready 再发 —— 否则新窗口里监听还没注册，弹窗会丢。
+ */
+let pendingUpdateNotice = null;
+
+function notifyUpdate(o) {
+  const payload = Object.assign({ kind: 'info', title: '检查更新' }, o || {});
+  if (sendSettings('update:notice', payload)) {
+    pendingUpdateNotice = null;
+    settingsWin.show();
+    settingsWin.focus();
+    return;
+  }
+  pendingUpdateNotice = payload;
+  openSettings('about');
+}
+
+/** 渲染层注册完监听后调用，把暂存的更新提示补发出去 */
+function flushUpdateNotice() {
+  if (!pendingUpdateNotice) return;
+  if (sendSettings('update:notice', pendingUpdateNotice)) pendingUpdateNotice = null;
+}
+
 function initAutoUpdater() {
   if (!app.isPackaged) return;
-  let autoUpdater;
-  try { ({ autoUpdater } = require('electron-updater')); }
-  catch (e) { diag('自动更新模块未就绪：' + ((e && e.message) || e)); return; }
+  const autoUpdater = getAutoUpdater();
+  if (!autoUpdater) return;
 
   autoUpdater.logger = {
     info: m => diag('[updater] ' + m),
@@ -2142,20 +2181,15 @@ function initAutoUpdater() {
   });
   autoUpdater.on('update-downloaded', info => {
     diag('[updater] 下载完成 ' + info.version);
-    dialog.showMessageBox({
-      type: 'info',
-      title: 'Mochi 更新好了',
-      message: `新版本 ${info.version} 已下载完成`,
-      detail: '点「立即重启」马上用新版本；点「稍后」会在下次退出时自动安装。',
-      buttons: ['立即重启', '稍后'],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) {
-        try { saveConfigNow(); } catch (_) {}
-        autoUpdater.quitAndInstall();
-      }
-    }).catch(() => {});
+    notifyUpdate({
+      kind: 'success',
+      title: '新版本已就绪',
+      text: `v${info.version} 已经下载好了。\n点「立即重启」马上用新版；点「稍后」会在下次退出 Mochi 时自动安装。`,
+      buttons: [
+        { id: 'restart', label: '立即重启', primary: true },
+        { id: 'later', label: '稍后' }
+      ]
+    });
   });
   autoUpdater.on('error', err => diag('[updater] 出错：' + ((err && (err.message || err)) || err)));
 
@@ -2164,27 +2198,48 @@ function initAutoUpdater() {
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 3600 * 1000);
 }
 
-/** 托盘 / 设置页「检查更新」：手动触发，带明确的结果提示 */
+/** 托盘 / 设置页「检查更新」：手动触发，结果显示在应用内弹窗里 */
 function checkUpdatesManual() {
   if (!app.isPackaged) {
-    dialog.showMessageBox({ type: 'info', title: '检查更新', message: '开发模式下不检查更新', detail: '只有打包安装后的 Mochi 才能检查更新。' });
+    notifyUpdate({
+      kind: 'warn',
+      title: '开发模式下不检查更新',
+      text: '只有打包安装后的 Mochi 才能检查更新。'
+    });
     return;
   }
-  let autoUpdater;
-  try { ({ autoUpdater } = require('electron-updater')); }
-  catch (e) {
-    dialog.showMessageBox({ type: 'error', title: '检查更新', message: '自动更新模块未就绪', detail: String((e && e.message) || e) });
+  const autoUpdater = getAutoUpdater();
+  if (!autoUpdater) {
+    notifyUpdate({
+      kind: 'error',
+      title: '自动更新模块未就绪',
+      text: '缺少 electron-updater，重装一次 Mochi 就能恢复。'
+    });
     return;
   }
+  // 检查可能要十几秒，先让宠物说一句，免得点了像没反应
+  sendPet('pet:say', { text: '我去看看有没有新版本…', ms: 3000 });
+  const cur = app.getVersion();
   autoUpdater.checkForUpdates().then(r => {
-    if (!r || !r.updateInfo) return;
-    if (r.updateInfo.version === app.getVersion()) {
-      dialog.showMessageBox({ type: 'info', title: '检查更新', message: '已是最新版本', detail: `当前版本 v${app.getVersion()}` });
+    const remote = r && r.updateInfo && r.updateInfo.version;
+    if (!remote || remote === cur) {
+      notifyUpdate({
+        kind: 'info',
+        title: '已是最新版本',
+        text: `当前版本 v${cur}，暂时没有新版本。`
+      });
+    } else {
+      notifyUpdate({
+        kind: 'info',
+        title: `发现新版本 v${remote}`,
+        text: `当前版本 v${cur}。新版本正在后台下载，下好会提醒你重启。`
+      });
     }
   }).catch(e => {
-    dialog.showMessageBox({
-      type: 'error', title: '检查更新', message: '检查更新失败',
-      detail: String((e && e.message) || e) + '\n（可能是网络问题，或还没有发布过新版本）'
+    notifyUpdate({
+      kind: 'error',
+      title: '检查更新失败',
+      text: String((e && e.message) || e) + '\n可能是网络问题，或还没有发布过新版本。'
     });
   });
 }
@@ -2299,6 +2354,25 @@ function registerIpc() {
 
   // 设置页「检查更新」
   ipcMain.handle('update:check', () => { checkUpdatesManual(); return { ok: true }; });
+
+  // 设置页渲染层监听就绪：把因为窗口刚打开而暂存的更新提示补发出去
+  ipcMain.on('ui:ready', e => {
+    if (settingsWin && !settingsWin.isDestroyed() && e.sender === settingsWin.webContents) {
+      flushUpdateNotice();
+    }
+  });
+
+  // 应用内更新弹窗上的按钮（目前只有「立即重启」需要主进程动手）
+  ipcMain.handle('update:action', (_e, action) => {
+    if (action === 'restart') {
+      const up = getAutoUpdater();
+      if (!up) return { ok: false, error: '自动更新模块未就绪' };
+      try { saveConfigNow(); } catch (_) { /* ignore */ }
+      setImmediate(() => up.quitAndInstall());
+      return { ok: true };
+    }
+    return { ok: true };
+  });
 
   ipcMain.handle('scene:now', () => currentScene);
 
