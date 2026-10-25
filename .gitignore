@@ -1,0 +1,50 @@
+# ---------------- 依赖 ----------------
+node_modules/
+.buildcache/
+
+# ---------------- 构建产物（由 CI 或本地 build.mjs 生成，不入库） ----------------
+dist/
+build/shots/
+build/*.log
+build/_full_*.png
+build/_w_*.png
+build/*.bak
+build/uicheck*.png
+*.blockmap
+
+# 自检时 Electron 生成的临时用户数据（含本地聊天记录，绝不入库）
+build/.shoot-userdata/
+
+# ---------------- 临时 / 缓存 ----------------
+.tmp/
+_temp/
+_temp*.*
+_uicheck*.html
+_uicheck*.png
+_t.html
+*.tsbuildinfo
+
+# ---------------- Python ----------------
+__pycache__/
+*.pyc
+
+# ---------------- 证书与凭据（绝对不要提交） ----------------
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+ai-secret.bin
+weather-secret.bin
+mochi-config.json
+
+# ---------------- 编辑器 / 系统 ----------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------- 日志 ----------------
+*.log
+npm-debug.log*

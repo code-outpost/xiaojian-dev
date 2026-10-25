@@ -1,0 +1,244 @@
+/* ==========================================================
+   Mochi · 钢琴模式
+   ========================================================== */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  user-select: none;
+}
+
+.piano-win {
+  position: relative;
+  height: calc(100% - 20px);
+  margin: 10px;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 12% 0%, #3F8BDC 0%, rgba(63, 139, 220, 0) 55%),
+    radial-gradient(90% 80% at 92% 10%, #5AA3E8 0%, rgba(90, 163, 232, 0) 50%),
+    linear-gradient(160deg, #2C6FBF 0%, #1F5AA6 55%, #184A8C 100%);
+  box-shadow: 0 24px 60px rgba(10, 30, 60, .38), 0 0 0 1px rgba(255, 255, 255, .12) inset;
+  display: flex;
+  flex-direction: column;
+  animation: winIn .24s cubic-bezier(.2, .9, .3, 1.04) both;
+}
+@keyframes winIn {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 背景音符 */
+.notes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.notes span {
+  position: absolute;
+  color: rgba(255, 255, 255, .26);
+  font-size: 22px;
+  animation: floatNote linear infinite;
+  text-shadow: 0 2px 8px rgba(0, 20, 50, .2);
+}
+@keyframes floatNote {
+  from { transform: translateY(20px) rotate(-6deg); opacity: 0; }
+  15% { opacity: 1; }
+  to { transform: translateY(-90px) rotate(10deg); opacity: 0; }
+}
+
+/* 顶栏 */
+.bar {
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 0 18px;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 3;
+}
+.chip {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .22);
+  padding: 4px 11px;
+  border-radius: 999px;
+  letter-spacing: .3px;
+}
+.tip {
+  font-size: 12px;
+  color: rgba(255, 255, 255, .74);
+}
+.bar .x {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background .15s;
+}
+.bar .x:hover { background: rgba(255, 255, 255, .26); }
+
+/* 舞台 */
+.stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding: 0 16px 0 18px;
+  z-index: 2;
+  min-height: 0;
+}
+
+/* 钢琴 */
+.piano {
+  flex: 1;
+  min-width: 0;
+  padding-right: 150px;
+}
+.frame {
+  position: relative;
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+  background: linear-gradient(180deg, #2B5E9E, #1B4272);
+  box-shadow:
+    0 10px 26px rgba(6, 20, 46, .4),
+    0 0 0 1px rgba(255, 255, 255, .1) inset,
+    0 -3px 0 rgba(0, 0, 0, .18) inset;
+}
+.frame::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 6px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 120, 120, .5), rgba(255, 255, 255, .12));
+}
+
+.keys {
+  position: relative;
+  display: flex;
+  height: 176px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0E2743;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .3) inset;
+}
+
+.wkey {
+  position: relative;
+  flex: 1;
+  margin-right: 1px;
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F7FAFE 72%, #E7EEF8 100%);
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, .06) inset, 0 4px 6px -4px rgba(0, 0, 0, .35);
+  cursor: pointer;
+  transition: background .06s, transform .06s;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+.wkey:last-child { margin-right: 0; }
+.wkey .lab {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9AA8BC;
+  letter-spacing: .5px;
+}
+.wkey:hover { background: linear-gradient(180deg, #FFFFFF 0%, #F0F6FF 70%, #DCE8F8 100%); }
+.wkey.on {
+  background: linear-gradient(180deg, #DCEBFF 0%, #B9D8FF 60%, #8DBDF8 100%);
+  transform: translateY(2px);
+  box-shadow: 0 2px 8px -2px rgba(90, 160, 255, .8) inset;
+}
+.wkey.on .lab { color: #2F6FBF; }
+
+.bkey {
+  position: absolute;
+  top: 0;
+  height: 62%;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(180deg, #2A3F5C 0%, #16263A 60%, #0C1826 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, .45), 0 -1px 0 rgba(255, 255, 255, .14) inset;
+  cursor: pointer;
+  z-index: 2;
+  transition: background .06s, transform .06s;
+}
+.bkey:hover { background: linear-gradient(180deg, #355074 0%, #1B2E45 60%, #10202F 100%); }
+.bkey.on {
+  background: linear-gradient(180deg, #5A8FCE 0%, #2F5F97 60%, #1D4570 100%);
+  transform: translateY(2px) scaleY(.985);
+}
+
+/* 角色 */
+.pet-zone {
+  position: absolute;
+  right: 10px;
+  bottom: -4px;
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+.pet-zone .pet {
+  width: 158px;
+  height: 158px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 16px rgba(4, 16, 36, .45));
+  transition: transform .12s cubic-bezier(.3, 1.5, .5, 1);
+  transform-origin: 50% 90%;
+}
+.pet-zone .pet.beat { transform: scale(1.05, .95) translateY(3px); }
+.pet-zone .say {
+  margin-bottom: -6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .95);
+  color: #2A3E58;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(4, 16, 36, .3);
+  opacity: 0;
+  transform: translateY(6px) scale(.9);
+  transition: opacity .18s, transform .2s cubic-bezier(.3, 1.4, .5, 1);
+}
+.pet-zone .say.show { opacity: 1; transform: none; }
+
+/* 底栏 */
+.foot {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, .62);
+  z-index: 3;
+}
+.keys-hint { display: flex; align-items: center; gap: 4px; }
+.foot kbd {
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 10px;
+  color: #EAF3FF;
+  background: rgba(255, 255, 255, .16);
+  border-radius: 5px;
+  padding: 2px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+.foot .sep { margin: 0 6px 0 10px; opacity: .6; }
+.foot .esc { opacity: .8; }

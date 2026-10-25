@@ -1,0 +1,71 @@
+name: Release
+
+# 用法：把 package.json 的 version 改成新版本 → 提交 → 打 tag 推送
+#   git commit -am "chore: bump 1.0.1"
+#   git tag v1.0.1
+#   git push origin main --tags
+# Actions 会自动构建 Windows 安装包并上传到 Release（含 latest.yml，客户端靠它自动更新）
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      # 注意：tag 必须等于 v + package.json 里的 version，否则 electron-builder 会报版本不匹配
+      - name: 校验 tag 与版本号一致
+        shell: bash
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          echo "package.json version = $PKG ; tag = ${GITHUB_REF_NAME}"
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$PKG" ]; then
+            echo "::error::tag (${GITHUB_REF_NAME}) 与 package.json version (v$PKG) 不一致"
+            exit 1
+          fi
+
+      - name: 构建并发布（nsis 安装版 + portable 便携版）
+        run: npx electron-builder --win nsis portable --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 有 Azure 云签名时，在仓库 Secrets 里配好这些即可自动签名：
+          # AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
+          # AZURE_CODE_SIGN_ACCOUNT / AZURE_CERT_PROFILE
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CODE_SIGN_ACCOUNT: ${{ secrets.AZURE_CODE_SIGN_ACCOUNT }}
+          AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
+
+      # 顺便把官网打包成一个 zip，方便单独丢到任意静态托管
+      - name: 打包官网静态站
+        shell: bash
+        run: |
+          cd website
+          python -c "import shutil; shutil.make_archive('../website', 'zip', '.')" || true
+
+      - name: 把官网 zip 附到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: website.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

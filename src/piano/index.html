@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Mochi 钢琴模式</title>
+  <link rel="stylesheet" href="piano.css">
+</head>
+<body>
+  <div class="piano-win" id="pianoWin">
+    <div class="notes" id="notes"></div>
+
+    <header class="bar">
+      <span class="chip">🎹 钢琴模式</span>
+      <span class="tip">按任意键试试～</span>
+      <button class="x" id="btnClose" title="关闭 (Esc)">×</button>
+    </header>
+
+    <div class="stage">
+      <div class="piano" id="piano">
+        <div class="frame">
+          <div class="keys" id="keys"></div>
+        </div>
+      </div>
+
+      <div class="pet-zone">
+        <div class="say" id="say">叮咚~</div>
+        <img class="pet" id="petImg" src="../../assets/cat/happy.png" alt="">
+      </div>
+    </div>
+
+    <footer class="foot">
+      <span class="keys-hint">
+        <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd>
+        <span class="sep">白键</span>
+        <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd>
+        <span class="sep">黑键</span>
+      </span>
+      <span class="esc">Esc 退出 · Ctrl+Alt+P 关闭</span>
+    </footer>
+  </div>
+
+  <script src="../shared/dialogues.js"></script>
+  <script src="../shared/sound.js"></script>
+  <script src="piano.js"></script>
+</body>
+</html>

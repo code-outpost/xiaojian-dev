@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mochi · 桌面搭子 —— 一只会陪你、会提醒你的 Windows 桌面宠物</title>
+<meta name="description" content="Mochi 是一只 Windows 桌面宠物：安静可爱、会看场景说话、会提醒你喝水起身，还能和你 AI 聊天、自定义形象。免费、免安装即用。" />
+<style>
+  :root{
+    --pink:#FF7BA6; --pink-deep:#F2548A; --ink:#2A2433; --ink-2:#5B5466;
+    --ink-3:#8C8696; --bg:#FFF7FA; --card:#FFFFFF; --line:#FFE3EC;
+    --soft:#FFF0F5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    color:var(--ink); background:var(--bg); line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+  a{color:var(--pink-deep);text-decoration:none}
+  /* 顶部导航 */
+  header{position:sticky;top:0;z-index:20;backdrop-filter:saturate(180%) blur(12px);
+    background:rgba(255,247,250,.82);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px}
+  .brand svg{width:30px;height:30px}
+  .nav-links{display:flex;gap:26px;font-size:15px}
+  .nav-links a{color:var(--ink-2)}
+  .nav-links a:hover{color:var(--pink-deep)}
+  .nav-cta{padding:9px 18px;border-radius:999px;background:var(--pink);color:#fff;font-weight:700;font-size:14px}
+  .nav-cta:hover{background:var(--pink-deep);color:#fff}
+  /* Hero */
+  .hero{padding:70px 0 50px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+  .hero h1{font-size:42px;line-height:1.25;font-weight:900;letter-spacing:-.5px}
+  .hero h1 .hl{color:var(--pink-deep)}
+  .hero p.lead{margin-top:18px;font-size:17px;color:var(--ink-2);max-width:30em}
+  .hero .btns{margin-top:28px;display:flex;gap:14px;flex-wrap:wrap}
+  .btn{padding:13px 24px;border-radius:14px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+  .btn-primary{background:var(--pink);color:#fff;box-shadow:0 10px 24px rgba(242,84,138,.28)}
+  .btn-primary:hover{background:var(--pink-deep);transform:translateY(-1px)}
+  .btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--pink);color:var(--pink-deep)}
+  .hero-art{display:flex;justify-content:center;position:relative}
+  .hero-art .blob{position:absolute;width:300px;height:300px;border-radius:46% 54% 60% 40%/55% 45% 55% 45%;
+    background:radial-gradient(circle at 30% 30%,#FFD6E6,#FFB7D2);filter:blur(2px);animation:float 7s ease-in-out infinite}
+  .hero-art svg{position:relative;width:280px;height:280px;animation:float 7s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+  /* 区块 */
+  section{padding:54px 0}
+  .sec-title{font-size:28px;font-weight:900;text-align:center;margin-bottom:8px}
+  .sec-sub{text-align:center;color:var(--ink-3);margin-bottom:34px;font-size:15px}
+  .grid{display:grid;gap:18px}
+  .grid.f3{grid-template-columns:repeat(3,1fr)}
+  .grid.f2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;
+    box-shadow:0 6px 20px rgba(255,123,166,.07)}
+  .card .ico{width:44px;height:44px;border-radius:12px;background:var(--soft);display:flex;align-items:center;
+    justify-content:center;font-size:22px;margin-bottom:12px}
+  .card h3{font-size:17px;margin-bottom:6px}
+  .card p{color:var(--ink-2);font-size:14.5px}
+  /* 角色 */
+  .chars{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .char{width:132px;text-align:center;display:flex;flex-direction:column;align-items:center}
+  .char .av{width:88px;height:88px;border-radius:24px;margin:0 auto 10px;background:var(--soft);
+    display:flex;align-items:center;justify-content:center;font-size:40px;border:1px solid var(--line);
+    overflow:hidden;padding:6px}
+  .char .av img{width:100%;height:100%;object-fit:contain;display:block}
+  .char .nm{font-size:14px;font-weight:700;color:var(--ink)}
+  .char .tg{font-size:11.5px;color:var(--ink-3);margin-top:4px;line-height:1.5}
+  .char .q{font-size:11.5px;color:var(--ink-2);margin-top:6px;line-height:1.5;font-style:italic}
+  .chars-note{margin-top:18px;text-align:center;font-size:13px;color:var(--ink-3);line-height:1.7}
+  /* 下载 */
+  .download{background:linear-gradient(160deg,#FFF0F5,#FFE3EC);border-radius:26px;padding:42px;text-align:center}
+  .download h2{font-size:26px;font-weight:900}
+  .dl-btns{margin-top:24px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .dl-note{margin-top:16px;font-size:13px;color:var(--ink-3)}
+  .dl-note code{background:#fff;padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
+  /* 作者 */
+  .author{display:flex;gap:22px;align-items:center;background:#fff;border:1px solid var(--line);
+    border-radius:20px;padding:28px}
+  .author .av{width:92px;height:92px;border-radius:50%;background:linear-gradient(135deg,#FFB7D2,#FF7BA6);
+    display:flex;align-items:center;justify-content:center;font-size:42px;color:#fff;font-weight:800;flex:none}
+  .author h3{font-size:20px;margin-bottom:4px}
+  .author .role{color:var(--pink-deep);font-weight:700;font-size:14px;margin-bottom:8px}
+  .author p{color:var(--ink-2);font-size:15px}
+  /* 隐私 */
+  .privacy{font-size:14px;color:var(--ink-2);background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
+  .privacy b{color:var(--ink)}
+  footer{padding:34px 0;text-align:center;color:var(--ink-3);font-size:13px;border-top:1px solid var(--line);margin-top:30px}
+  @media (max-width:760px){
+    .hero{grid-template-columns:1fr;text-align:center}
+    .hero .btns,.hero p.lead{justify-content:center;margin-left:auto;margin-right:auto}
+    .grid.f3,.grid.f2{grid-template-columns:1fr}
+    .nav-links{display:none}
+    .hero h1{font-size:32px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="22" fill="#FFB7D2"/><circle cx="32" cy="34" r="22" fill="none" stroke="#F2548A" stroke-width="2"/><circle cx="25" cy="30" r="3" fill="#2A2433"/><circle cx="39" cy="30" r="3" fill="#2A2433"/><path d="M24 40 q8 7 16 0" stroke="#F2548A" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M20 18 q-4 -8 4 -10 M44 18 q4 -8 -4 -10" stroke="#F2548A" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+      Mochi
+    </div>
+    <nav class="nav-links">
+      <a href="#features">功能</a>
+      <a href="#chars">角色</a>
+      <a href="#download">下载</a>
+      <a href="#author">关于作者</a>
+    </nav>
+    <a class="nav-cta" href="#download">免费下载</a>
+  </div>
+</header>
+
+<section class="wrap hero">
+  <div>
+    <h1>一只会陪你、会<span class="hl">提醒你</span>的<br/>Windows 桌面宠物</h1>
+    <p class="lead">Mochi 安静地待在桌角，看你忙、看你摸鱼。累了劝你喝口水，久坐了催你起身，还会陪你 AI 闲聊、按场景冒出心里话——但绝不弹窗打断你。</p>
+    <div class="btns">
+      <a class="btn btn-primary" href="#download">⬇ 下载 Mochi</a>
+      <a class="btn btn-ghost" href="#features">看看能做什么</a>
+    </div>
+  </div>
+  <div class="hero-art">
+    <div class="blob"></div>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="22" fill="#FFC2D8"/><circle cx="25" cy="31" r="3.4" fill="#2A2433"/><circle cx="39" cy="31" r="3.4" fill="#2A2433"/><circle cx="26" cy="35" r="2" fill="#F2548A" opacity=".5"/><circle cx="38" cy="35" r="2" fill="#F2548A" opacity=".5"/><path d="M23 41 q9 8 18 0" stroke="#F2548A" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M18 19 q-5 -9 5 -11 M46 19 q5 -9 -5 -11" stroke="#F2548A" stroke-width="2.6" fill="none" stroke-linecap="round"/><text x="32" y="14" font-size="11" text-anchor="middle">♡</text></svg>
+  </div>
+</section>
+
+<section id="features" class="wrap">
+  <h2 class="sec-title">它能为你做什么</h2>
+  <p class="sec-sub">不想做"又吵又冷冰冰"的提醒工具，只想当个刚刚好的桌面搭子</p>
+  <div class="grid f3">
+    <div class="card"><div class="ico">💬</div><h3>场景感知碎碎念</h3><p>识别你正在用的软件，按场景冒出贴合心境的台词——写代码时安静，摸鱼时逗你。</p></div>
+    <div class="card"><div class="ico">⏰</div><h3>温柔的健康提醒</h3><p>定时劝你喝水、起身活动，但只在桌角低声说一句，绝不弹窗抢你的注意力。</p></div>
+    <div class="card"><div class="ico">🤖</div><h3>随时 AI 闲聊</h3><p>内置免费 AI 对话（也可填自己的 API Key），快捷键一唤即来，陪你吐槽、答疑。</p></div>
+    <div class="card"><div class="ico">🌤️</div><h3>桌面天气播报</h3><p>显示当前天气，恶劣/突变天气主动提醒，出门前不再手忙脚乱。</p></div>
+    <div class="card"><div class="ico">🎨</div><h3>自定义形象</h3><p>上传你自己的角色图片，9 种状态随心配，桌面宠物长什么样你说了算。</p></div>
+    <div class="card"><div class="ico">🐾</div><h3>6 个角色 × 9 种状态</h3><p>团子猫、柴犬、抽象团、小欣、小甜、蓝羽少女，各有待机、行走、开心、困倦等丰富表情与专属台词。</p></div>
+  </div>
+</section>
+
+<section id="chars" class="wrap">
+  <h2 class="sec-title">挑一只陪你</h2>
+  <p class="sec-sub">默认 6 个角色，也可上传属于你自己的那只</p>
+  <div class="chars">
+    <div class="char">
+      <div class="av"><img src="assets/chars/cat.png" alt="团子猫"></div>
+      <span class="nm">团子猫</span>
+      <span class="tg">治愈 · 粘人 · 爱吐槽</span>
+      <span class="q">「又来肝代码了？」</span>
+    </div>
+    <div class="char">
+      <div class="av"><img src="assets/chars/dog.png" alt="柴犬"></div>
+      <span class="nm">柴犬</span>
+      <span class="tg">活泼 · 忠诚 · 爱玩游戏</span>
+      <span class="q">「上号！带我一个🎮」</span>
+    </div>
+    <div class="char">
+      <div class="av"><img src="assets/chars/blob.png" alt="抽象团"></div>
+      <span class="nm">抽象团</span>
+      <span class="tg">神秘 · 佛系 · 哲学系</span>
+      <span class="q">「一切都是虚无…但先喝水吧💧」</span>
+    </div>
+    <div class="char">
+      <div class="av"><img src="assets/chars/xin.png" alt="小欣"></div>
+      <span class="nm">小欣</span>
+      <span class="tg">优雅 · 甜美 · 爱下午茶</span>
+      <span class="q">「今天也要美美的哦~」</span>
+    </div>
+    <div class="char">
+      <div class="av"><img src="assets/chars/sweet.png" alt="小甜"></div>
+      <span class="nm">小甜</span>
+      <span class="tg">甜美 · 可爱 · 软萌</span>
+      <span class="q">「要抱抱~」</span>
+    </div>
+    <div class="char">
+      <div class="av"><img src="assets/chars/yu.png" alt="蓝羽少女"></div>
+      <span class="nm">蓝羽少女</span>
+      <span class="tg">优雅 · 温柔 · 大气</span>
+      <span class="q">「慢慢来，你已经很好啦~」</span>
+    </div>
+  </div>
+  <p class="chars-note">以上 6 只为内置角色，每个都有 9 种状态（待机 / 行走 / 开心 / 困倦 / 提醒 / 打字 / 偷看 / 被摸 / 点击）。
+    也可以在设置里上传你自己的图片，做成专属角色。</p>
+</section>
+
+<section id="download" class="wrap">
+  <div class="download">
+    <h2>免费下载 Mochi</h2>
+    <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 自动更新</p>
+    <div class="dl-btns">
+      <!-- ⚠️ 每次发版：把下面的 Mochi-Setup-1.0.0.exe 改成新版本号，与 package.json 的 version 保持一致 -->
+      <a class="btn btn-primary" href="https://github.com/xiaojian-dev/mochi-desktop-pet/releases/latest/download/Mochi-Setup-1.0.0.exe">⬇ 安装版（推荐）</a>
+      <a class="btn btn-ghost" href="https://github.com/xiaojian-dev/mochi-desktop-pet/releases/latest/download/Mochi-Standalone.exe">📦 便携单文件版</a>
+      <a class="btn btn-ghost" href="https://github.com/xiaojian-dev/mochi-desktop-pet/releases">⤴ 所有版本 / GitHub</a>
+    </div>
+    <p class="dl-note">
+      安装版装一次、启动最快、可自动更新；便携版是单个 <code>.exe</code>，拷到任何地方双击即用。<br/>
+      若浏览器提示"未知发布者"，属正常现象（软件未付费购买代码签名证书），点"仍要运行"即可。
+    </p>
+  </div>
+</section>
+
+<section id="author" class="wrap">
+  <h2 class="sec-title">关于作者</h2>
+  <p class="sec-sub">一个人，一只猫，和一个想被温柔对待的念头</p>
+  <div class="author">
+    <div class="av">阿</div>
+    <div>
+      <h3>小阿健</h3>
+      <div class="role">独立开发者 · Mochi 作者</div>
+      <p>做 Mochi，是因为市面上的提醒工具要么太吵、要么冷冰冰——弹窗、红点、催促，让人更焦虑。我想要一个安静可爱、真能帮到自己的"桌面搭子"：会劝你喝水起身，但绝不打断；会陪你聊天，但从不偷看你的东西；形象和台词，都能完全自定义成你喜欢的样子。希望你也能在忙碌的屏幕上，遇见一点温柔。</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="privacy">
+    <b>隐私说明：</b> Mochi 在本地运行，不会上传你的任何个人文件或聊天内容。仅在你主动提交"意见反馈"时，才会把反馈文字与（你自行选择的）截图发送到作者邮箱。天气、AI 等联网功能所用到的密钥均在本地加密存储，不会出现明文。本页不涉及除下载以外的任何数据采集。
+  </div>
+</section>
+
+<footer class="wrap">
+  © <span id="year"></span> Mochi · 由独立开发者小阿健打造 · 用 ❤️ 与 Electron 写成<br/>
+  <a href="https://github.com/xiaojian-dev/mochi-desktop-pet">GitHub</a> · 反馈邮箱 2931424924@qq.com
+</footer>
+
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

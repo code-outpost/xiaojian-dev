@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>欢迎来到 Mochi</title>
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="onboarding.css">
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="lights">
+        <button class="light red" id="btnClose" title="关闭"></button>
+        <button class="light yellow" id="btnMin" title="最小化"></button>
+        <button class="light green" title="Mochi"></button>
+      </div>
+      <div class="title" id="winTitle">欢迎来到 Mochi</div>
+    </div>
+
+    <div class="ob-body">
+      <!-- 步骤条 -->
+      <div class="stepper" id="stepper">
+        <div class="step-item active" data-step="1">
+          <span class="dot">1</span><span class="txt">选择角色</span>
+        </div>
+        <i class="step-line"></i>
+        <div class="step-item" data-step="2">
+          <span class="dot">2</span><span class="txt">场景感知</span>
+        </div>
+        <i class="step-line"></i>
+        <div class="step-item" data-step="3">
+          <span class="dot">3</span><span class="txt">完成</span>
+        </div>
+      </div>
+
+      <!-- 第一步 -->
+      <section class="pane active" id="pane1">
+        <h1 class="ob-title">欢迎来到 Mochi</h1>
+        <p class="ob-sub">选一个桌面搭子，它会陪着你看代码、提醒你喝水、偶尔吐槽两句。</p>
+        <div class="char-grid" id="charGrid"></div>
+        <div class="pane-foot">
+          <button class="btn btn-primary" id="toStep2">下一步</button>
+        </div>
+      </section>
+
+      <!-- 第二步 -->
+      <section class="pane" id="pane2">
+        <h1 class="ob-title">场景感知</h1>
+        <p class="ob-sub">开启后，Mochi 会读取当前活动窗口的程序名，用来给你情境吐槽。</p>
+
+        <div class="scene-hero">
+          <label class="big-switch">
+            <input type="checkbox" id="sceneToggle" checked>
+            <span class="big-track"><span class="big-thumb"></span><span class="big-label">开启</span></span>
+          </label>
+          <div class="scene-note">
+            <span class="lock">🔒</span>
+            <div>
+              <b>仅本地处理，不上传数据</b>
+              <p>只读取进程名（如 <code>Code.exe</code>），不读取窗口内容，不联网、不收集任何信息。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane-foot spread">
+          <button class="btn btn-ghost" id="backTo1">上一步</button>
+          <button class="btn btn-primary" id="toStep3">下一步</button>
+        </div>
+      </section>
+
+      <!-- 第三步 -->
+      <section class="pane" id="pane3">
+        <h1 class="ob-title">准备好了</h1>
+        <p class="ob-sub">它会一直待在桌面右下角，随时可以叫它出来。</p>
+
+        <div class="done-card">
+          <div class="done-char" id="doneChar">
+            <div class="done-thumb"><img id="doneImg" alt=""></div>
+            <div class="done-meta">
+              <div class="done-name" id="doneName">团子猫</div>
+              <div class="done-traits" id="doneTraits">治愈 · 粘人 · 爱吐槽</div>
+              <div class="done-quote" id="doneQuote">“又来肝代码了？”</div>
+            </div>
+          </div>
+          <div class="tips">
+            <div class="tip"><b>Ctrl + Alt + P</b><span>钢琴模式 · 键盘变琴键</span></div>
+            <div class="tip"><b>Ctrl + Alt + C</b><span>一键切换角色</span></div>
+            <div class="tip"><b>右键宠物</b><span>打开菜单 / 设置</span></div>
+            <div class="tip"><b>拖动宠物</b><span>换到任意位置，Ctrl+滚轮缩放</span></div>
+          </div>
+        </div>
+
+        <div class="pane-foot spread">
+          <button class="btn btn-ghost" id="backTo2">上一步</button>
+          <button class="btn btn-primary big" id="finish">开始使用 Mochi</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="../shared/dialogues.js"></script>
+  <script src="onboarding.js"></script>
+</body>
+</html>

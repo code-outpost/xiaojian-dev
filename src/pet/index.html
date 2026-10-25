@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Mochi</title>
+  <link rel="stylesheet" href="pet.css">
+</head>
+<body>
+  <div id="stage">
+    <div class="stats" id="stats">
+      <div class="stat" data-k="mood"><span class="ico">😊</span><span class="lbl">心情</span><span class="val">82</span></div>
+      <div class="stat" data-k="energy"><span class="ico">⚡</span><span class="lbl">精力</span><span class="val">68</span></div>
+      <div class="stat" data-k="intimacy"><span class="ico">💗</span><span class="lbl">亲密度</span><span class="val">24</span></div>
+    </div>
+
+    <div class="bubble" id="bubble" data-hit>
+      <div class="bubble-text" id="bubbleText"></div>
+      <div class="bubble-actions" id="bubbleActions"></div>
+    </div>
+
+    <div class="pet-wrap state-idle" id="petWrap" data-hit>
+      <img class="layer" id="layerA" alt="">
+      <img class="layer" id="layerB" alt="">
+      <div class="zzz"><span>z</span><span>z</span><span>Z</span></div>
+      <div class="hearts" id="hearts"></div>
+    </div>
+
+    <div class="ground-shadow" id="groundShadow"></div>
+  </div>
+
+  <script src="../shared/dialogues.js"></script>
+  <script src="../shared/sound.js"></script>
+  <script src="pet.js"></script>
+</body>
+</html>

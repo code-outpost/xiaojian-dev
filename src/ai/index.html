@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Mochi · 和我聊聊</title>
+  <link rel="stylesheet" href="ai.css">
+</head>
+<body>
+  <div class="ai-win">
+    <header class="bar">
+      <img class="avatar" id="avatar" src="../../assets/cat/idle.png" alt="">
+      <div class="who">
+        <b id="whoName">Mochi</b>
+        <span id="whoTone">温柔</span>
+      </div>
+      <button class="ghost" id="btnClear" title="清空对话">清空</button>
+      <button class="x" id="btnClose" title="关闭 (Esc)">×</button>
+    </header>
+
+    <div class="msgs" id="msgs"></div>
+
+    <div class="chips" id="chips">
+      <button data-q="今天有什么要注意的吗">今天要注意什么</button>
+      <button data-q="帮我想一句开机问候语">想句问候语</button>
+      <button data-q="我有点拖延，怎么开始">我有点拖延</button>
+    </div>
+
+    <footer class="compose">
+      <textarea id="input" rows="1" placeholder="说点什么…（Enter 发送）"></textarea>
+      <button class="send" id="btnSend" title="发送">发送</button>
+    </footer>
+  </div>
+  <script src="ai.js"></script>
+</body>
+</html>

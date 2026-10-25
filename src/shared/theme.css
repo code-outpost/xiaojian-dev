@@ -1,0 +1,236 @@
+/* ==========================================================
+   Mochi 通用设计系统（引导 / 设置 / 钢琴 共用）
+   ========================================================== */
+:root {
+  --font: "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+
+  --ink: #1E2430;
+  --ink-2: #5A6373;
+  --ink-3: #8A93A3;
+  --line: #EEF1F6;
+  --line-2: #E3E8F0;
+
+  --bg: #FFFFFF;
+  --bg-soft: #F6F8FC;
+  --bg-side: #F7F9FD;
+
+  --accent: #4A90D9;
+  --accent-deep: #3576BC;
+  --accent-soft: #EAF2FC;
+  --green: #34C759;
+  --red: #FF5F57;
+  --yellow: #FEBC2E;
+  --shadow-win: 0 28px 80px rgba(18, 28, 52, .26), 0 4px 14px rgba(18, 28, 52, .08);
+
+  --r-win: 16px;
+  --r-card: 14px;
+  --r-btn: 10px;
+
+  /* 主题色（由 JS 按角色写入） */
+  --theme: #FFB6C1;
+  --theme-deep: #F58BA8;
+  --theme-soft: #FFE3EC;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+/* ---------- 窗口外壳 ---------- */
+.window {
+  position: relative;
+  height: calc(100% - 32px);
+  margin: 16px;
+  background: var(--bg);
+  border-radius: var(--r-win);
+  box-shadow: var(--shadow-win);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: winIn .26s cubic-bezier(.22, .9, .3, 1.05) both;
+}
+
+@keyframes winIn {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.titlebar {
+  position: relative;
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: drag;
+  background: linear-gradient(180deg, #FFFFFF, #FDFDFF);
+  border-bottom: 1px solid var(--line);
+}
+
+.titlebar .title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: .2px;
+}
+
+.lights {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: filter .15s, transform .15s;
+}
+.light:hover { filter: brightness(1.12); transform: scale(1.08); }
+.light.red { background: var(--red); }
+.light.yellow { background: var(--yellow); }
+.light.green { background: var(--green); }
+
+.titlebar .close-x {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  -webkit-app-region: no-drag;
+}
+.titlebar .close-x:hover { background: var(--bg-soft); color: var(--ink); }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0 26px;
+  height: 40px;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .18s, background .18s, color .18s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.btn:active { transform: scale(.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--theme), var(--theme-deep));
+  color: #fff;
+  box-shadow: 0 8px 20px -8px var(--theme-deep);
+}
+.btn-primary:hover { filter: brightness(1.04); box-shadow: 0 12px 24px -10px var(--theme-deep); }
+
+.btn-solid { background: var(--accent); color: #fff; box-shadow: 0 8px 20px -10px var(--accent); }
+.btn-solid:hover { background: var(--accent-deep); }
+
+.btn-ghost {
+  background: #fff;
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+}
+.btn-ghost:hover { background: var(--bg-soft); color: var(--ink); }
+
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------- 开关 ---------- */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 28px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: #DDE2EB;
+  border-radius: 999px;
+  transition: background .22s;
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(20, 30, 50, .22);
+  transition: transform .22s cubic-bezier(.3, 1.4, .5, 1);
+}
+.switch input:checked + .track {
+  /* 全站开关统一用一种颜色（跟随角色主题色），不再出现绿/紫/蓝混搭 */
+  background: var(--theme-deep);
+  box-shadow: 0 2px 6px -2px var(--theme-deep);
+}
+.switch input:checked + .track::after { transform: translateX(18px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--theme); outline-offset: 2px; }
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: 0 2px 10px rgba(24, 38, 66, .04);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 18px;
+}
+.row + .row { border-top: 1px solid var(--line); }
+.row .label { font-size: 14px; color: var(--ink); }
+.row .hint { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #D8DEE9; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #C2CAD8; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- 通用动画 ---------- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.fade-up { animation: fadeUp .32s cubic-bezier(.2, .8, .3, 1) both; }

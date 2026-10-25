@@ -1,0 +1,298 @@
+/* ==========================================================
+   Mochi 桌面宠物 · 宠物窗口
+   透明置顶浮层，空白区域鼠标穿透
+   ========================================================== */
+:root {
+  --pet-size: 250px;
+  --theme: #FFB6C1;
+  --theme-deep: #F58BA8;
+  --theme-soft: #FFE3EC;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+  user-select: none;
+  cursor: default;
+  -webkit-font-smoothing: antialiased;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px 4px;
+}
+
+/* ---------------- 心情 / 精力 / 亲密度 ---------------- */
+.stats {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .24s ease, transform .24s ease;
+  pointer-events: none;
+}
+#stage.hover .stats,
+.stats.always { opacity: 1; transform: none; }
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .93);
+  box-shadow: 0 3px 10px rgba(20, 30, 50, .16), 0 0 0 1px rgba(255, 255, 255, .5) inset;
+  font-size: 11px;
+  color: #4A5262;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+.stat .ico { font-size: 11.5px; }
+.stat .val {
+  font-weight: 700;
+  color: #22293A;
+  font-variant-numeric: tabular-nums;
+  min-width: 15px;
+  text-align: right;
+}
+.stat.bump { animation: statBump .45s cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes statBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+/* ---------------- 气泡 ---------------- */
+.bubble {
+  position: relative;
+  max-width: 296px;
+  margin-bottom: 10px;
+  padding: 9px 13px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 10px 26px rgba(20, 30, 50, .18), 0 1px 0 rgba(255, 255, 255, .9) inset;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #2B3242;
+  opacity: 0;
+  transform: translateY(8px) scale(.94);
+  transform-origin: 50% 100%;
+  transition: opacity .2s ease, transform .22s cubic-bezier(.2, 1.3, .4, 1);
+  pointer-events: none;
+}
+.bubble.show {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: rgba(255, 255, 255, .97);
+  border-radius: 2px;
+  transform: rotate(45deg);
+  box-shadow: 2px 3px 6px rgba(20, 30, 50, .07);
+}
+.bubble-text { white-space: pre-wrap; word-break: break-word; }
+.bubble-text .caret {
+  display: inline-block;
+  width: 2px;
+  height: 13px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--theme-deep);
+  animation: blink .8s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.bubble-actions {
+  display: none;
+  gap: 7px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+.bubble-actions.show { display: flex; }
+.bubble-actions button {
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--theme-soft);
+  color: var(--theme-deep);
+  transition: transform .12s, filter .15s;
+}
+.bubble-actions button:hover { filter: brightness(.97); }
+.bubble-actions button:active { transform: scale(.95); }
+.bubble-actions button.primary {
+  background: linear-gradient(135deg, var(--theme), var(--theme-deep));
+  color: #fff;
+}
+
+/* ---------------- 角色 ---------------- */
+.pet-wrap {
+  position: relative;
+  width: var(--pet-size);
+  height: var(--pet-size);
+  cursor: grab;
+  flex: 0 0 auto;
+}
+.pet-wrap:active { cursor: grabbing; }
+
+.layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity .16s ease-out;
+  pointer-events: none;
+  filter: drop-shadow(0 7px 12px rgba(28, 38, 58, .14));
+}
+.layer.on { opacity: 1; }
+
+/* 各状态的微动画（单帧素材靠形变补足生命感） */
+.state-idle { animation: breathe 4.4s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.012); }
+}
+
+.state-typing { animation: typingBob .46s ease-in-out infinite alternate; }
+@keyframes typingBob {
+  from { transform: translateY(0) rotate(-1deg); }
+  to { transform: translateY(-4px) rotate(1deg); }
+}
+
+.state-clicking { animation: popOnce .42s cubic-bezier(.3, 1.5, .5, 1) 1; }
+@keyframes popOnce {
+  0% { transform: scale(1); }
+  35% { transform: scale(.9, 1.08); }
+  70% { transform: scale(1.06, .94); }
+  100% { transform: scale(1); }
+}
+
+.state-happy { animation: hop .54s ease-in-out infinite; }
+@keyframes hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  22% { transform: translateY(3px) scale(1.05, .93); }
+  55% { transform: translateY(-16px) scale(.97, 1.05); }
+  80% { transform: translateY(0) scale(1.04, .95); }
+}
+
+.state-sleepy { animation: sleepBreathe 6.4s ease-in-out infinite; }
+@keyframes sleepBreathe {
+  0%, 100% { transform: translateY(2px) scaleY(.99); }
+  50% { transform: translateY(5px) scaleY(.972); }
+}
+
+.state-excited { animation: bounceFast .4s ease-in-out infinite; }
+@keyframes bounceFast {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+.state-petting { animation: purrSquish 1.9s ease-in-out infinite; }
+@keyframes purrSquish {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.035, .975); }
+  70% { transform: scale(.992, 1.008); }
+}
+
+.state-peek { animation: tiltPeek 2.6s ease-in-out infinite; }
+@keyframes tiltPeek {
+  0%, 100% { transform: rotate(0) translateY(0); }
+  32% { transform: rotate(-3.2deg) translateY(-1px); }
+  72% { transform: rotate(2.6deg) translateY(0); }
+}
+
+.state-reminding { animation: wiggle .86s ease-in-out infinite; }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0) translateX(0); }
+  25% { transform: rotate(-2.4deg) translateX(-2px); }
+  75% { transform: rotate(2.4deg) translateX(2px); }
+}
+
+/* 影子 */
+.ground-shadow {
+  width: calc(var(--pet-size) * .58);
+  height: 11px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(28, 38, 58, .28), rgba(28, 38, 58, 0));
+  filter: blur(1px);
+  transition: transform .4s ease, opacity .4s ease;
+  pointer-events: none;
+}
+.state-happy ~ .ground-shadow { transform: scale(.82); opacity: .7; }
+.state-excited ~ .ground-shadow { transform: scale(.86); opacity: .72; }
+.state-sleepy ~ .ground-shadow { transform: scale(1.04); opacity: .9; }
+
+/* ---------------- 爱心 / Zzz ---------------- */
+.hearts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.heart {
+  position: absolute;
+  font-size: 15px;
+  will-change: transform, opacity;
+  animation: heartUp 1.5s cubic-bezier(.2, .7, .4, 1) forwards;
+  filter: drop-shadow(0 2px 3px rgba(235, 110, 155, .3));
+}
+@keyframes heartUp {
+  0% { opacity: 0; transform: translate(0, 0) scale(.45) rotate(0); }
+  18% { opacity: 1; transform: translate(0, -10px) scale(1) rotate(-6deg); }
+  100% { opacity: 0; transform: translate(var(--dx, 10px), -78px) scale(.8) rotate(8deg); }
+}
+
+.zzz {
+  position: absolute;
+  right: 4px;
+  top: 16%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity .4s;
+  color: #93A0B5;
+  font-weight: 800;
+  pointer-events: none;
+}
+.state-sleepy .zzz { opacity: 1; }
+.zzz span {
+  display: block;
+  font-size: 11px;
+  animation: zfloat 2.8s ease-in-out infinite;
+}
+.zzz span:nth-child(2) { font-size: 14px; animation-delay: .45s; }
+.zzz span:nth-child(3) { font-size: 17px; animation-delay: .9s; }
+@keyframes zfloat {
+  0% { opacity: 0; transform: translate(0, 6px); }
+  30% { opacity: .92; }
+  100% { opacity: 0; transform: translate(12px, -28px); }
+}

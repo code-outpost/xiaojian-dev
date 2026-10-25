@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Mochi 设置</title>
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="window">
+    <div class="titlebar">
+      <div class="lights">
+        <button class="light red" id="btnClose" title="关闭"></button>
+        <button class="light yellow" id="btnMin" title="最小化"></button>
+        <button class="light green" title="Mochi"></button>
+      </div>
+      <div class="title">Mochi 设置</div>
+    </div>
+
+    <div class="set-body">
+      <!-- 侧边栏 -->
+      <aside class="side">
+        <div class="side-brand">
+          <img id="brandImg" src="../../assets/cat/idle.png" alt="">
+          <div class="brand-meta">
+            <b id="brandName">团子猫</b>
+            <span id="brandSlogan">又来肝代码了？</span>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-pane="general">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+            常规
+          </button>
+          <button class="nav-item" data-pane="character">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+            角色选择
+          </button>
+          <button class="nav-item" data-pane="remind">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 10v3.4l2.2 1.6M9 3h6"/></svg>
+            提醒设置
+          </button>
+          <button class="nav-item" data-pane="weather">
+            <svg viewBox="0 0 24 24"><path d="M7.5 18a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.3 1.2A3.6 3.6 0 0 1 17.5 18z"/><circle cx="8.6" cy="7.6" r="2.6"/></svg>
+            天气
+          </button>
+          <button class="nav-item" data-pane="scene">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M9 20h6M12 16.5V20"/></svg>
+            场景感知
+          </button>
+          <button class="nav-item" data-pane="ai">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="12" rx="4"/><circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><path d="M12 3v3"/></svg>
+            AI 对话
+          </button>
+          <button class="nav-item" data-pane="help">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8"/><circle cx="12" cy="16.6" r=".9" fill="currentColor" stroke="none"/></svg>
+            帮助
+          </button>
+          <button class="nav-item" data-pane="feedback">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5h16v11H12l-4.5 3.5V16.5H4z"/><path d="M8 9.5h8M8 12.6h5"/></svg>
+            反馈
+          </button>
+          <button class="nav-item" data-pane="about">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M12 11v5.2"/><circle cx="12" cy="8.2" r=".9" fill="currentColor" stroke="none"/></svg>
+            关于
+          </button>
+        </nav>
+
+        <div class="side-foot">
+          <span class="dot-live"></span>
+          <span id="sideStatus">Mochi 正在陪着你</span>
+        </div>
+      </aside>
+
+      <!-- 内容区 -->
+      <main class="content">
+
+        <!-- 常规 -->
+        <section class="pane active" id="pane-general">
+          <h2 class="pane-title">常规</h2>
+
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="label">提醒风格</div>
+                <div class="hint">决定它催你喝水时的语气</div>
+              </div>
+              <div class="radios" id="styleRadios">
+                <button class="radio-chip" data-style="gentle">温柔</button>
+                <button class="radio-chip" data-style="neutral">中立</button>
+                <button class="radio-chip" data-style="sassy">毒舌</button>
+              </div>
+            </div>
+
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">窗口层级</div>
+                  <div class="hint" id="layerHint">置顶：始终在你所有窗口之上（鼠标可穿透，不挡点击）</div>
+                </div>
+              </div>
+              <div class="radios" id="layerRadios">
+                <button class="radio-chip" data-layer="top">置顶显示</button>
+                <button class="radio-chip" data-layer="ghost">半透明置顶</button>
+                <button class="radio-chip" data-layer="bottom">桌面层</button>
+              </div>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">自由走动</div>
+                <div class="hint">默认关闭：不开它就待在原地不动。打开后只会在当前屏幕的可用区域里小步走动，永远不会走出桌面、也不会压到任务栏</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="wander"><span class="track"></span></label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">开机自启</div>
+                <div class="hint">登录 Windows 后自动唤醒 Mochi</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="autoLaunch"><span class="track"></span></label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">音效</div>
+                <div class="hint">被摸的呼噜声、提醒铃、钢琴音</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="sound"><span class="track"></span></label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">本地记忆</div>
+                <div class="hint">记住陪伴天数与互动次数（只存本地）</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="memory"><span class="track"></span></label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">常显状态</div>
+                <div class="hint">关闭后只在鼠标移到宠物身上时显示心情 / 精力 / 亲密度</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="showStats"><span class="track"></span></label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">宠物大小</div>
+                <div class="hint">也可以 Ctrl + 滚轮直接在桌面上缩放</div>
+              </div>
+              <div class="slider-wrap">
+                <input type="range" id="scale" min="0.75" max="1.5" step="0.05">
+                <span class="slider-val" id="scaleVal">100%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">数据保存位置</div>
+                  <div class="hint">配置与自定义形象图片的存放处，可改到非 C 盘</div>
+                </div>
+              </div>
+              <div class="row-sub data-loc">
+                <span id="dataPath" class="data-path">—</span>
+                <button class="btn btn-ghost" id="dataChoose">更改保存位置…</button>
+                <button class="btn btn-ghost" id="dataReset">恢复默认（C 盘）</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 角色选择 -->
+        <section class="pane" id="pane-character">
+          <h2 class="pane-title">角色选择</h2>
+          <p class="pane-sub">点击卡片直接切换，桌面上会立刻换成新角色。每张卡片（包括内置角色）都可以点「自定义」改名字、口头禅、性格标签和各状态台词；也可以添加完全属于你自己的形象。</p>
+          <div class="char-actions">
+            <button class="btn btn-primary" id="addCustomBtn">＋ 添加自定义形象</button>
+          </div>
+          <div class="char-list" id="charList"></div>
+        </section>
+
+        <!-- 提醒设置 -->
+        <section class="pane" id="pane-remind">
+          <h2 class="pane-title">提醒设置</h2>
+          <p class="pane-sub">提醒只会以宠物举牌 + 气泡的形式出现，不会弹系统窗口打扰你。</p>
+
+          <div class="card">
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">喝水提醒</div>
+                  <div class="hint">到点它会举牌喊你喝水</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="waterOn"><span class="track"></span></label>
+              </div>
+              <div class="row-sub" id="waterSub">
+                <span>间隔时间</span>
+                <select id="waterInterval">
+                  <option value="15">15 分钟</option>
+                  <option value="30">30 分钟</option>
+                  <option value="45">45 分钟</option>
+                  <option value="60">60 分钟</option>
+                  <option value="90">90 分钟</option>
+                  <option value="120">120 分钟</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">起身提醒</div>
+                  <div class="hint">久坐提醒，站起来走两步</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="standOn"><span class="track"></span></label>
+              </div>
+              <div class="row-sub" id="standSub">
+                <span>间隔时间</span>
+                <select id="standInterval">
+                  <option value="30">30 分钟</option>
+                  <option value="45">45 分钟</option>
+                  <option value="60">60 分钟</option>
+                  <option value="90">90 分钟</option>
+                  <option value="120">120 分钟</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">番茄钟</div>
+                  <div class="hint">专注一段时间后提醒你休息</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="pomoOn"><span class="track"></span></label>
+              </div>
+              <div class="row-sub" id="pomoSub">
+                <span>专注时长</span>
+                <select id="pomoFocus">
+                  <option value="25">25 分钟</option>
+                  <option value="45">45 分钟</option>
+                  <option value="60">60 分钟</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">上下班打卡提醒</div>
+                  <div class="hint">到设定时刻它会举牌提醒你打卡（上班 / 下班各一个时间点）</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="commuteOn"><span class="track"></span></label>
+              </div>
+              <div class="row-sub" id="commuteSub">
+                <span>上班打卡</span>
+                <input type="time" id="commuteIn" value="09:00">
+                <span>下班打卡</span>
+                <input type="time" id="commuteOut" value="18:00">
+              </div>
+            </div>
+          </div>
+
+          <div class="test-row">
+            <button class="btn btn-ghost" id="testWater">试一次喝水提醒</button>
+            <button class="btn btn-ghost" id="testStand">试一次起身提醒</button>
+            <button class="btn btn-ghost" id="testCommute">试一次打卡提醒</button>
+          </div>
+        </section>
+
+        <!-- 天气 -->
+        <section class="pane" id="pane-weather">
+          <h2 class="pane-title">天气</h2>
+          <p class="pane-sub">数据来自和风天气。设置你所在的城市后，它会按天气变化提醒你带伞、添衣、防晒等；凭据会用系统加密保存在本地。</p>
+
+          <div class="card">
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">天气提醒</div>
+                  <div class="hint">下雨 / 下雪 / 大风 / 高温 / 低温 / 温差大 / 紫外线强时举牌提醒</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="weatherOn"><span class="track"></span></label>
+              </div>
+              <div class="row-sub" id="weatherSub">
+                <span>刷新间隔</span>
+                <select id="weatherInterval">
+                  <option value="10">10 分钟</option>
+                  <option value="15">15 分钟</option>
+                  <option value="30">30 分钟</option>
+                  <option value="60">60 分钟</option>
+                  <option value="120">120 分钟</option>
+                </select>
+                <span>重复提醒</span>
+                <select id="weatherRepeat">
+                  <option value="15">15 分钟</option>
+                  <option value="30">30 分钟</option>
+                  <option value="60">60 分钟</option>
+                  <option value="180">180 分钟</option>
+                </select>
+              </div>
+              <div class="hint">天气类型一变（比如刚开始下雨）会立刻提醒，不等间隔；同一种天气按「重复提醒」节流。</div>
+            </div>
+
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">城市</div>
+                  <div class="hint">输入城市名后点「查询」，再点选结果里的城市</div>
+                </div>
+              </div>
+              <div class="row-sub">
+                <input type="text" id="weatherCity" placeholder="例如：北京 / 杭州 / 深圳">
+                <button class="btn btn-ghost" id="weatherLookup">查询</button>
+              </div>
+              <div class="row-sub wrap" id="weatherCandidates"></div>
+              <div class="hint" id="weatherCityNow">还没设置城市</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="label" id="weatherNowText">当前天气</div>
+                <div class="hint" id="weatherNowMeta">点「立即刷新」获取最新天气</div>
+              </div>
+              <div class="weather-temp" id="weatherNowTemp">—</div>
+            </div>
+            <div class="test-row">
+              <button class="btn btn-ghost" id="weatherRefresh">立即刷新天气</button>
+              <button class="btn btn-ghost" id="weatherTest">试一次天气提醒</button>
+            </div>
+            <div class="weather-days" id="weatherDays"></div>
+          </div>
+
+          <div class="card">
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">我的凭据（可选覆盖）</div>
+                  <div class="hint">应用默认已内置开发者凭证，开箱即用，无需填写。这里只用于「你自己的和风天气凭据」覆盖——填了才会用你的，不填就用内置默认。无论哪种，密钥都用系统级加密（Windows DPAPI，绑定当前账户）写入数据目录，配置文件不含明文，界面也不显示内置默认密钥。</div>
+                </div>
+              </div>
+              <div class="row-sub wrap">
+                <span>凭据 ID</span>
+                <input type="text" id="weatherCredId" placeholder="可留空">
+                <span>API 密钥</span>
+                <input type="password" id="weatherKey" placeholder="内置默认凭证已启用（留空即沿用）">
+              </div>
+              <div class="test-row">
+                <button class="btn btn-ghost" id="weatherSaveSecret">保存我的凭据</button>
+                <button class="btn btn-ghost" id="weatherResetSecret">恢复默认</button>
+              </div>
+              <div class="cred-status">
+                <span class="hint" id="weatherCredHint"></span>
+                <span class="cred-badge off" id="weatherSecretState"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 场景感知 -->
+        <section class="pane" id="pane-scene">
+          <h2 class="pane-title">场景感知</h2>
+          <p class="pane-sub">读取当前活动窗口的进程名，用来判断你在写代码、开会还是打游戏。</p>
+
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="label">开启场景感知</div>
+                <div class="hint">关闭后它不会再根据你正在用的软件说话</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="sceneOn"><span class="track"></span></label>
+            </div>
+
+            <div class="row live-row">
+              <div>
+                <div class="label">当前识别</div>
+                <div class="hint">每 1.5 秒刷新一次，只在本机内存中处理</div>
+              </div>
+              <div class="live-box">
+                <div class="live-proc" id="liveProc">—</div>
+                <div class="live-tag" id="liveScene">等待中</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="privacy">
+                <span class="lock">🔒</span>
+                <div>
+                  <div class="label">隐私说明</div>
+                  <div class="hint">只读取进程名（例如 <code>Code.exe</code>），不读取窗口内容、不截图、不联网、不上传任何数据。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-card">
+            <b>已支持的场景</b>
+            <div class="chips">
+              <span>写代码</span><span>玩游戏</span><span>逛网页</span><span>聊天</span>
+              <span>开会</span><span>办公</span><span>看片听歌</span>
+            </div>
+          </div>
+
+          <div class="tip-card">
+            <b>一直显示「—」识别不到？</b>
+            <div class="hint">说明后台读取脚本没能启动。托盘右键 →「退出」，再重新打开 Mochi 一次通常就好了。如果装了拦截脚本的杀毒软件，需要允许 Mochi 调起 PowerShell（只读进程名，不读窗口内容）。</div>
+          </div>
+        </section>
+
+        <!-- AI 对话 -->
+        <section class="pane" id="pane-ai">
+          <h2 class="pane-title">AI 对话</h2>
+          <p class="pane-sub">内置免费对话接口，不用填任何密钥就能用。可以闲聊，也能让它帮你写台词、起名字、想提醒文案。</p>
+
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="label">开启 AI 对话</div>
+                <div class="hint">关闭后快捷键与托盘入口都不再打开对话窗口</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="aiOn"><span class="track"></span></label>
+            </div>
+            <div class="row">
+              <div>
+                <div class="label">让宠物一起说话</div>
+                <div class="hint">AI 回复时在桌面上也冒一句话（取前 40 字）</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="aiSpeak"><span class="track"></span></label>
+            </div>
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">说话风格</div>
+                  <div class="hint">影响 AI 的回答口吻</div>
+                </div>
+              </div>
+              <div class="row-sub wrap" id="aiToneChips">
+                <button class="radio-chip" data-tone="gentle">温柔</button>
+                <button class="radio-chip" data-tone="neutral">简洁</button>
+                <button class="radio-chip" data-tone="sassy">毒舌</button>
+              </div>
+            </div>
+            <div class="test-row">
+              <button class="btn btn-primary" id="aiOpen">打开对话窗口</button>
+              <button class="btn btn-ghost" id="aiClear">清空聊天记录</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sec-label">接口来源</div>
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">用哪个 AI</div>
+                  <div class="hint">默认用内置免费接口，开箱即用；也可以换成你自己的 AI（任意 OpenAI 兼容接口，如 OpenAI / DeepSeek / Moonshot / 本地 Ollama）。</div>
+                </div>
+              </div>
+              <div class="row-sub wrap" id="aiProviderChips">
+                <button class="radio-chip on" data-provider="default">内置免费接口</button>
+                <button class="radio-chip" data-provider="custom">我自己的 AI</button>
+              </div>
+              <div class="cred-status">
+                <span class="hint" id="aiCredHint">当前使用内置免费接口，开箱即用，无需配置。</span>
+                <span class="cred-badge ok" id="aiSecretState">已使用内置免费接口</span>
+              </div>
+            </div>
+
+            <div id="aiCustomBox" class="ai-custom" hidden>
+              <div class="ai-field">
+                <label class="mini-label">接口地址</label>
+                <input class="cr-input" id="aiBaseUrl" placeholder="https://api.openai.com/v1">
+              </div>
+              <div class="ai-field">
+                <label class="mini-label">模型名</label>
+                <input class="cr-input" id="aiModel" placeholder="gpt-4o-mini / deepseek-chat / qwen2.5">
+              </div>
+              <div class="ai-field">
+                <label class="mini-label">API Key</label>
+                <input type="password" class="cr-input" id="aiKey" placeholder="sk-…（只存在你本机，加密保存）">
+              </div>
+              <div class="test-row">
+                <button class="btn btn-primary" id="aiSaveSecret">保存我的 AI</button>
+                <button class="btn btn-ghost" id="aiResetSecret">恢复默认接口</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tip-card">
+            <b>快捷键</b>
+            <div class="hint"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>A</kbd> 随时唤出对话窗口；也可以右键宠物 →「和我聊聊」。</div>
+          </div>
+        </section>
+
+        <!-- 帮助 -->
+        <section class="pane" id="pane-help">
+          <h2 class="pane-title">帮助</h2>
+          <p class="pane-sub">三分钟上手。第一次用的话，从头看一遍就够了。</p>
+
+          <div class="card guide-card">
+            <div class="guide-row">
+              <div class="guide-ico"><img src="../../assets/cat/idle.png" alt=""></div>
+              <div class="guide-main">
+                <div class="label">新手引导</div>
+                <div class="hint">第一次打开 Mochi 时走过的那套引导：挑角色、开场景感知。想再看一遍随时可以打开，不会清掉你已经设置好的东西。</div>
+              </div>
+              <button class="btn btn-primary" id="replayGuide">重新看一遍</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sec-label">快速上手</div>
+            <div class="help-steps">
+              <div class="hs"><i>1</i><div><b>拖到顺手的位置</b><p>按住宠物就能拖，松手即停。默认不会自己乱跑；想让它散步可以到「常规 → 自由走动」打开，活动范围严格限制在桌面可用区域内。</p></div></div>
+              <div class="hs"><i>2</i><div><b>选一个角色</b><p>「角色选择」里有内置形象，也能上传自己的图片做专属形象（至少传一张「待机」图）。</p></div></div>
+              <div class="hs"><i>3</i><div><b>开提醒</b><p>「提醒设置」里配喝水、起身、番茄钟和上下班打卡。到点它会举牌 + 冒气泡，不会弹系统窗口打断你。</p></div></div>
+              <div class="hs"><i>4</i><div><b>填城市看天气</b><p>「天气」里输入城市名点查询，选中的城市会存下来。之后下雨、降温、大风都会提前提醒。</p></div></div>
+              <div class="hs"><i>5</i><div><b>找不到它就喊回来</b><p>托盘右键 →「把宠物叫回眼前」，或者按 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd>。</p></div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sec-label">快捷键</div>
+            <div class="key-list">
+              <div class="krow"><span>打开设置</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>S</kbd></div>
+              <div class="krow"><span>AI 对话</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>A</kbd></div>
+              <div class="krow"><span>叫回宠物</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd></div>
+              <div class="krow"><span>切换角色</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>C</kbd></div>
+              <div class="krow"><span>钢琴</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>P</kbd></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sec-label">常见问题</div>
+            <details class="faq"><summary>换了形象但桌面上没变？</summary>
+              <p>先确认打开的是新版：托盘右键 → 退出，再重新打开。如果角色卡上有红色「缺图片」，说明这个形象没有可用图片，点「上传图片」补一张即可。</p>
+            </details>
+            <details class="faq"><summary>宠物不见了 / 跑出屏幕？</summary>
+              <p>现在每 4 秒会自动检查一次：只要身体有任何一部分超出桌面可用区域（比如压到任务栏后面），就会立刻被收回视野内，不会再「只露个头顶」。想主动找回它，按 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd> 或托盘右键「把宠物叫回眼前」。</p>
+            </details>
+            <details class="faq"><summary>提醒没有响？</summary>
+              <p>检查「提醒设置」里对应的开关是否打开；喝水/起身是按间隔循环的，番茄钟和打卡是按时间点。也可以点「试一次」验证。</p>
+            </details>
+            <details class="faq"><summary>天气一直是「—」？</summary>
+              <p>「天气」里必须先点「查询」并点选一个候选城市（只填名字不会生效）。还不行就点「立即刷新」看提示。</p>
+            </details>
+            <details class="faq"><summary>数据存在哪？</summary>
+              <p>默认在 <code>%APPDATA%\Mochi</code>，可以在「常规 → 数据保存位置」改到别的盘，配置和形象图片会一起搬过去。</p>
+            </details>
+          </div>
+        </section>
+
+        <!-- 反馈 -->
+        <section class="pane" id="pane-feedback">
+          <h2 class="pane-title">反馈</h2>
+          <p class="pane-sub">遇到的问题、想要的功能都可以写在这里。提交后会直接发到作者邮箱（不会收集任何隐私数据，只附带版本号和系统信息）。</p>
+
+          <div class="card">
+            <div class="row stack">
+              <div class="row-head"><div><div class="label">类型</div></div></div>
+              <div class="row-sub wrap" id="fbTypeChips">
+                <button class="radio-chip on" data-type="功能建议">功能建议</button>
+                <button class="radio-chip" data-type="Bug / 问题">Bug / 问题</button>
+                <button class="radio-chip" data-type="其他">其他</button>
+              </div>
+            </div>
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">内容</div>
+                  <div class="hint">越具体越好，比如「点了保存没反应，角色卡也没出现」</div>
+                </div>
+              </div>
+              <textarea class="cr-input fb-text" id="fbText" rows="6" placeholder="说说你的想法…"></textarea>
+            </div>
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">联系方式（选填）</div>
+                  <div class="hint">留个邮箱 / QQ，方便回复你</div>
+                </div>
+              </div>
+              <input class="cr-input" id="fbContact" placeholder="选填">
+            </div>
+            <div class="row stack">
+              <div class="row-head">
+                <div>
+                  <div class="label">附件（选填）</div>
+                  <div class="hint">可以上传截图，最多 3 张，方便作者定位问题（会自动压缩）</div>
+                </div>
+              </div>
+              <div class="fb-attach" id="fbAttach"></div>
+              <button class="btn btn-ghost fb-add-img" id="fbAddImg" type="button">＋ 添加图片</button>
+              <input type="file" id="fbFile" accept="image/*" multiple hidden>
+            </div>
+            <div class="test-row">
+              <button class="btn btn-primary" id="fbSubmit">提交反馈</button>
+              <button class="btn btn-ghost" id="fbCopy">复制内容</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 关于 -->
+        <section class="pane" id="pane-about">
+          <h2 class="pane-title">关于 Mochi</h2>
+
+          <div class="about-hero">
+            <img id="aboutImg" src="../../assets/cat/idle.png" alt="">
+            <div>
+              <div class="about-name">Mochi · 麻吉</div>
+              <div class="about-desc">会看、会记、会陪你玩的桌面搭子</div>
+              <div class="about-ver" id="aboutVer">v1.0.0</div>
+            </div>
+          </div>
+
+          <div class="about-actions">
+            <button class="btn btn-ghost" id="btnCheckUpdate">检查更新</button>
+            <span class="about-update-hint" id="aboutUpdateHint"></span>
+          </div>
+
+          <div class="card author-card">
+            <div class="author-avatar">阿</div>
+            <div class="author-meta">
+              <div class="author-name">小阿健</div>
+              <div class="author-role">独立开发者 · 一个人做 Mochi</div>
+              <p class="author-bio">我是小阿健，一个喜欢捣鼓桌面小玩意的独立开发者。做 Mochi 的初衷很简单：市面上的提醒工具要么太吵、要么冷冰冰，我想要一个安静、可爱、又真能帮到我的「桌面搭子」——它会在你忘了喝水时举牌提醒，会在你连续敲代码时劝你起来走走，但不会弹窗打断你、也不会偷看你的东西。Mochi 从形象到台词都能自己定义，希望它也能成为陪你度过每一个工作日的小伙伴。想提建议或聊聊，去「反馈」里说一声就行～</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="row">
+              <div class="label">陪伴天数</div>
+              <div class="about-val" id="memDays">1 天</div>
+            </div>
+            <div class="row">
+              <div class="label">被摸次数</div>
+              <div class="about-val" id="memPets">0 次</div>
+            </div>
+            <div class="row">
+              <div class="label">配置文件</div>
+              <button class="link-btn" id="openConfig">打开所在文件夹 ↗</button>
+            </div>
+          </div>
+
+          <div class="card keys">
+            <div class="row"><div class="label">钢琴模式</div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>P</kbd></div>
+            <div class="row"><div class="label">切换角色</div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>C</kbd></div>
+            <div class="row"><div class="label">打开设置</div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>S</kbd></div>
+            <div class="row"><div class="label">把宠物叫回眼前</div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd></div>
+          </div>
+
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="label">恢复默认设置</div>
+                <div class="hint">角色、提醒、天气、AI 等全部回到出厂状态（自定义形象与宠物位置会保留）</div>
+              </div>
+              <button class="btn btn-ghost danger" id="btnReset">恢复默认</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 反馈提交结果弹窗 -->
+  <div class="modal-mask" id="fbModalMask">
+    <div class="fb-modal" id="fbModal" role="dialog" aria-modal="true" aria-labelledby="fbModalTitle">
+      <div class="fb-modal-ico" id="fbModalIco"></div>
+      <div class="fb-modal-title" id="fbModalTitle"></div>
+      <div class="fb-modal-text" id="fbModalText"></div>
+      <div class="fb-modal-actions" id="fbModalActions"></div>
+    </div>
+  </div>
+
+  <!-- 台词 / 角色自定义编辑器 -->
+  <div class="modal-mask" id="editorMask">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <span id="editorTitle">编辑台词</span>
+        <button class="modal-x" id="editorClose">✕</button>
+      </div>
+      <div class="modal-body" id="editorBody"></div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost danger" id="editorReset">恢复默认内容</button>
+        <span class="flex"></span>
+        <button class="btn btn-ghost" id="editorCancel">取消</button>
+        <button class="btn btn-primary" id="editorSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义形象创建器 -->
+  <div class="modal-mask" id="creatorMask">
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <span id="creatorTitle">添加自定义形象</span>
+        <button class="modal-x" id="creatorClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cr-section">
+          <div class="dl-label">形象名称</div>
+          <input class="cr-input" id="creatorName" placeholder="例如：我的猫娘">
+          <div class="cr-sub">英文名（可选）</div>
+          <input class="cr-input" id="creatorEn" placeholder="MyCat">
+          <div class="cr-sub">标签（用 、或逗号分隔，可选）</div>
+          <input class="cr-input" id="creatorTraits" placeholder="例如：元气、话痨">
+          <div class="cr-sub">标语 / 口头禅一句话（可选）</div>
+          <input class="cr-input" id="creatorSlogan" placeholder="例如：今天也要元气满满！">
+        </div>
+
+        <div class="cr-section">
+          <div class="dl-label">主题色</div>
+          <div class="cr-colors">
+            <label>主色 <input type="color" id="crColor"></label>
+            <label>深色 <input type="color" id="crColorDeep"></label>
+            <label>浅色 <input type="color" id="crColorSoft"></label>
+          </div>
+        </div>
+
+        <div class="cr-section">
+          <div class="row-head">
+            <div><div class="dl-label">举右手（点击 / 开心时抬手）</div></div>
+            <label class="switch"><input type="checkbox" id="crHand"><span class="track"></span></label>
+          </div>
+          <div class="dl-label">画面占比（裁剪用，0.6–1.0）</div>
+          <div class="slider-wrap">
+            <input type="range" id="crRatio" min="0.6" max="1" step="0.01">
+            <span class="slider-val" id="crRatioVal">100%</span>
+          </div>
+        </div>
+
+        <div class="cr-section">
+          <div class="dl-label">状态图片（建议透明 PNG，至少提供「待机」）</div>
+          <div class="cr-imgs" id="crImgs"></div>
+          <button class="btn btn-ghost" id="crFillMain">把「待机」套用到全部状态</button>
+          <div class="cr-hint">未提供的状态会自动复用「待机」图；建议 512×512、背景透明的图片。</div>
+        </div>
+
+        <div class="cr-section">
+          <div class="dl-label">台词（可选，留空则用默认）</div>
+          <div id="crDialogue"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost danger" id="creatorDelete" style="display:none">删除形象</button>
+        <span class="flex"></span>
+        <button class="btn btn-ghost" id="creatorCancel">取消</button>
+        <button class="btn btn-primary" id="creatorSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/dialogues.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

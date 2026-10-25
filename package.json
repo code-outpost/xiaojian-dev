@@ -1,0 +1,98 @@
+{
+  "name": "mochi-desktop-pet",
+  "productName": "Mochi",
+  "version": "1.0.0",
+  "description": "Mochi - a Windows desktop pet that sees, remembers, and keeps you company",
+  "main": "main.js",
+  "author": "Mochi",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "prepare-assets": "python scripts/prepare_assets.py",
+    "pack": "node build.mjs dir",
+    "build": "node build.mjs installer",
+    "build:portable": "node build.mjs portable",
+    "build:all": "node build.mjs all",
+    "build:msix": "node build.mjs msix",
+    "release": "node build.mjs all"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mochi.desktoppet",
+    "productName": "Mochi",
+    "copyright": "Copyright (C) 2026 Mochi",
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*",
+      "build/icon.ico",
+      "build/tray.png",
+      "scripts/active-window.ps1"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Mochi",
+      "artifactName": "Mochi-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Mochi-Standalone-${version}.exe"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "xiaojian-dev",
+        "repo": "mochi-desktop-pet",
+        "releaseType": "release",
+        "private": false
+      }
+    ],
+    "appx": {
+      "identityName": "Ajian.MochiDesktopPet",
+      "publisher": "CN=A-Jian",
+      "publisherDisplayName": "小阿健",
+      "applicationId": "Mochi",
+      "displayName": "Mochi 桌面宠物",
+      "backgroundColor": "#FFF6F8",
+      "languages": [
+        "zh-CN",
+        "en-US"
+      ],
+      "artifactName": "Mochi-MSIX-${version}.appx"
+    }
+  }
+}

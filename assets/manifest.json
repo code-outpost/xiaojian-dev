@@ -1,0 +1,122 @@
+{
+  "cat": {
+    "states": [
+      "clicking",
+      "excited",
+      "happy",
+      "idle",
+      "peek",
+      "petting",
+      "reminding",
+      "sleepy",
+      "typing"
+    ],
+    "file": "assets/cat/{state}.png",
+    "crop": [
+      243,
+      214,
+      1582
+    ],
+    "visualRatio": 0.8047
+  },
+  "dog": {
+    "states": [
+      "clicking",
+      "excited",
+      "happy",
+      "idle",
+      "peek",
+      "petting",
+      "reminding",
+      "sleepy",
+      "typing"
+    ],
+    "file": "assets/dog/{state}.png",
+    "crop": [
+      148,
+      133,
+      1807
+    ],
+    "visualRatio": 0.8301
+  },
+  "blob": {
+    "states": [
+      "clicking",
+      "excited",
+      "happy",
+      "idle",
+      "peek",
+      "petting",
+      "reminding",
+      "sleepy",
+      "typing"
+    ],
+    "file": "assets/blob/{state}.png",
+    "crop": [
+      227,
+      237,
+      1609
+    ],
+    "visualRatio": 0.8379
+  },
+  "xin": {
+    "states": [
+      "clicking",
+      "excited",
+      "happy",
+      "idle",
+      "peek",
+      "petting",
+      "reminding",
+      "sleepy",
+      "typing"
+    ],
+    "file": "assets/xin/{state}.png",
+    "crop": [
+      49,
+      50,
+      2037
+    ],
+    "visualRatio": 0.9102
+  },
+  "sweet": {
+    "states": [
+      "clicking",
+      "excited",
+      "happy",
+      "idle",
+      "peek",
+      "petting",
+      "reminding",
+      "sleepy",
+      "typing"
+    ],
+    "file": "assets/sweet/{state}.png",
+    "crop": [
+      130,
+      116,
+      1970
+    ],
+    "visualRatio": 0.8867
+  },
+  "yu": {
+    "states": [
+      "clicking",
+      "excited",
+      "happy",
+      "idle",
+      "peek",
+      "petting",
+      "reminding",
+      "sleepy",
+      "typing"
+    ],
+    "file": "assets/yu/{state}.png",
+    "crop": [
+      99,
+      75,
+      1920
+    ],
+    "visualRatio": 0.9453
+  }
+}
