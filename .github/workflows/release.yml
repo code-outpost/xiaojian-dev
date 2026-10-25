@@ -47,10 +47,14 @@ jobs:
       # 若你买了正式证书：把证书转 base64 存成 Secret CERT_BASE64 + CERT_PASSWORD，
       # 然后把这一步换成解码写盘并导出 CSC_LINK / CSC_KEY_PASSWORD 即可，无需改其它代码。
       - name: 准备代码签名证书（无 Azure 凭据时用自签占位）
-        if: ${{ secrets.AZURE_CODE_SIGN_ACCOUNT == '' }}
         shell: pwsh
         continue-on-error: true
+        env:
+          # 注意：secrets 不能写进 step 的 if 条件（会让整个 workflow 失效），
+          # 所以这里注入成环境变量，由脚本自己判断。
+          HAS_AZURE_SIGN: ${{ secrets.AZURE_CODE_SIGN_ACCOUNT }}
         run: |
+          if ($env:HAS_AZURE_SIGN) { Write-Host "检测到 Azure 云签名凭据，跳过自签证书"; exit 0 }
           $pwd = ConvertTo-SecureString -String 'mochi-dev' -Force -AsPlainText
           $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=A-Jian, O=Mochi, C=CN' `
             -FriendlyName 'Mochi Code Signing (dev)' `
