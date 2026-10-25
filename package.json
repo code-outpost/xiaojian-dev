@@ -1,7 +1,7 @@
 {
   "name": "mochi-desktop-pet",
   "productName": "Mochi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Mochi - a Windows desktop pet that sees, remembers, and keeps you company",
   "main": "main.js",
   "author": "Mochi",
