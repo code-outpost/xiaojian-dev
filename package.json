@@ -75,8 +75,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "xiaojian-dev",
-        "repo": "mochi-desktop-pet",
+        "owner": "code-outpost",
+        "repo": "xiaojian-dev",
         "releaseType": "release",
         "private": false
       }
