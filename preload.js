@@ -21,7 +21,9 @@ const EVENTS = [
   'pet:hi',
   'weather:update',
   'settings:goto',
-  'update:notice'
+  'update:notice',
+  'hand:pose',
+  'hand:status'
 ];
 
 contextBridge.exposeInMainWorld('mochi', {
@@ -106,6 +108,17 @@ contextBridge.exposeInMainWorld('mochi', {
   dataLocation: () => invoke('data:location'),
   chooseAndRelocate: () => invoke('data:choose-and-relocate'),
   resetDataLocation: () => invoke('data:reset-location'),
+
+  /* 摄像头手势镜像（隐藏 sensor 窗口 ↔ 主进程 ↔ 宠物窗口） */
+  sensorSetActive: on => send('sensor:set-active', !!on),
+  sendSensorHand: g => send('sensor:hand', g),
+  sendSensorStatus: s => send('sensor:status', s),
+  onSensorControl: cb => {
+    const h = (_e, p) => cb(p);
+    ipcRenderer.on('sensor:control', h);
+    return () => ipcRenderer.removeListener('sensor:control', h);
+  },
+  handStatus: () => invoke('hand:status'),
 
   /* 事件订阅，返回取消函数 */
   on(channel, cb) {

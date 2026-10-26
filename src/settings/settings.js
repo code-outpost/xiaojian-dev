@@ -51,6 +51,10 @@
     commuteOut: $('#commuteOut'),
     commuteSub: $('#commuteSub'),
     sceneOn: $('#sceneOn'),
+    livingPet: $('#livingPet'),
+    cameraMirror: $('#cameraMirror'),
+    camStatusRow: $('#camStatusRow'),
+    camBadge: $('#camBadge'),
     liveProc: $('#liveProc'),
     liveScene: $('#liveScene'),
     brandImg: $('#brandImg'),
@@ -725,6 +729,10 @@
 
     el.sceneOn.checked = !!cfg.scene.on;
 
+    el.livingPet.checked = cfg.livingPet !== false;
+    el.cameraMirror.checked = !!cfg.cameraMirror;
+    updateCamStatusVisibility();
+
     fillWeather(cfg);
 
     el.layerRadios.querySelectorAll('.radio-chip').forEach(b => {
@@ -925,6 +933,40 @@
   document.getElementById('testCommute').addEventListener('click', () => api.testReminder('commute'));
 
   el.sceneOn.addEventListener('change', () => patch({ scene: { on: el.sceneOn.checked } }).then(fill));
+
+  /* 活体形象 */
+  el.livingPet.addEventListener('change', () => patch({ livingPet: el.livingPet.checked }));
+  el.cameraMirror.addEventListener('change', () => {
+    const on = el.cameraMirror.checked;
+    patch({ cameraMirror: on });
+    api.sensorSetActive(on);
+    updateCamStatusVisibility();
+    if (on) refreshCamStatus();
+  });
+  // 摄像头状态实时更新
+  api.on('hand:status', s => setCamBadge(s));
+  if (cfg.cameraMirror) refreshCamStatus();
+
+  function updateCamStatusVisibility() {
+    if (el.camStatusRow) el.camStatusRow.hidden = !el.cameraMirror.checked;
+  }
+  function setCamBadge(s) {
+    if (!el.camBadge) return;
+    const map = {
+      idle: ['摄像头：待命', 'off'],
+      starting: ['摄像头：启动中…', 'warn'],
+      active: ['摄像头：已连接，比划一下试试', 'ok'],
+      denied: ['摄像头：被拒绝，请在系统设置允许', 'off'],
+      nocamp: ['摄像头：未检测到摄像头', 'off'],
+      unavailable: ['手势模型加载失败（可能离线）', 'warn']
+    };
+    const [text, cls] = map[s] || ['摄像头：未知', 'off'];
+    el.camBadge.textContent = text;
+    el.camBadge.className = 'cred-badge ' + cls;
+  }
+  async function refreshCamStatus() {
+    try { const s = await api.handStatus(); setCamBadge(s); } catch (_) { }
+  }
 
   /* AI 对话 */
   el.aiOn.addEventListener('change', async () => {

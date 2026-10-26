@@ -5,7 +5,7 @@
  */
 const {
   app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut,
-  screen, nativeImage, powerMonitor, shell, dialog, safeStorage
+  screen, nativeImage, powerMonitor, shell, dialog, safeStorage, session
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -155,6 +155,8 @@ const DEFAULT_CONFIG = {
   layer: 'top',                     // 窗口层级：'top'(置顶) | 'ghost'(半透明置顶) | 'bottom'(桌面层)
   wander: { on: false },            // 自由走动：默认关（只在用户主动打开后才自己挪步）
   wanderMigratedOff: false,         // 一次性迁移标记：老配置里的 wander.on:true 自动关掉
+  livingPet: true,                  // 活体引擎：true=程序化骨骼角色（会呼吸/情绪/动作），false=静态立绘
+  cameraMirror: false,              // 摄像头手势镜像：true=开启后宠物模仿你的手部动作
   charDialogues: {},                // 基础角色台词覆盖：{ [id]: { idle:[...], poke:[...], ... } }
   customCharacters: [],             // 自定义角色：[{ id,name,en,color,colorDeep,colorSoft,traits,
                                     //   slogan,visualRatio,handClick,images:{state:'file://...'}, dialogues:{...} }]
@@ -658,6 +660,45 @@ function createPetWindow() {
   });
 
   if (IS_DEV) petWin.webContents.openDevTools({ mode: 'detach' });
+}
+
+/* ------------------------------------------------------------------ *
+ * 摄像头手势感知窗口（隐藏运行）
+ * 取摄像头流 + MediaPipe Hands，把用户手势经 IPC 发给宠物窗口做镜像。
+ * 默认隐藏、不占界面；只有用户主动开启「摄像头镜像」才真正打开摄像头。
+ * ------------------------------------------------------------------ */
+let sensorWin = null;
+let handStatus = 'idle';   // idle | starting | active | denied | nocamp | unavailable
+
+function createSensorWindow() {
+  if (sensorWin) return;
+  sensorWin = new BrowserWindow({
+    width: 320,
+    height: 240,
+    show: false,
+    frame: false,
+    transparent: false,
+    skipTaskbar: true,
+    resizable: false,
+    webPreferences: baseWebPrefs()
+  });
+  sensorWin.loadFile(path.join(ROOT, 'src', 'sensor', 'index.html'));
+  hookLog(sensorWin, 'sensor');
+  sensorWin.on('closed', () => { sensorWin = null; });
+}
+
+/** 开启/关闭摄像头感知（用户开关或开机恢复配置时调用） */
+function setSensorActive(on) {
+  if (!sensorWin) createSensorWindow();
+  if (!sensorWin) return;
+  if (on) {
+    // 移到屏幕外：隐藏窗口仍能取摄像头，但用户看不到任何方块
+    sensorWin.setPosition(-3000, -3000);
+    sensorWin.show();
+  } else {
+    sensorWin.hide();
+  }
+  sensorWin.webContents.send('sensor:control', !!on);
 }
 
 /* ------------------------------------------------------------------ *
@@ -2529,6 +2570,21 @@ function registerIpc() {
     petWin.setIgnoreMouseEvents(!!ignore, { forward: true });
   });
 
+  /* ---- 摄像头手势镜像：sensor 窗口 ↔ 主进程 ↔ 宠物窗口 ---- */
+  ipcMain.on('sensor:hand', (_e, g) => { sendPet('hand:pose', g || { present: false }); });
+  ipcMain.on('sensor:status', (_e, s) => {
+    handStatus = s || 'idle';
+    broadcast('hand:status', handStatus);
+  });
+  ipcMain.on('sensor:set-active', (_e, on) => { setSensorActive(!!on); });
+  ipcMain.handle('hand:status', () => handStatus);
+
+  // 摄像头权限：仅允许隐藏的 sensor 窗口使用媒体设备（其它窗口一律拒绝）
+  session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
+    if (permission === 'media' && wc === sensorWin) return cb(true);
+    cb(false);
+  });
+
   ipcMain.on('pet:menu', () => {
     if (!tray) return;
     tray.popUpContextMenu();
@@ -2976,6 +3032,9 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc();
     createPetWindow();
     createTray();
+    // 摄像头手势感知窗口（隐藏）：若用户已开启镜像，则在首屏后启动
+    createSensorWindow();
+    if (config.cameraMirror) setTimeout(() => setSensorActive(true), 2000);
 
     globalShortcut.register('Control+Alt+P', togglePiano);
     globalShortcut.register('Control+Alt+C', cycleCharacter);

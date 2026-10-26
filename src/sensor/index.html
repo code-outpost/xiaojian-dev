@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Mochi Sensor</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+    video { position: absolute; width: 320px; height: 240px; object-fit: cover; transform: scaleX(-1); opacity: 0; }
+    #dbg { position: absolute; left: 4px; top: 4px; color: #0f0; font: 11px monospace; }
+  </style>
+</head>
+<body>
+  <video id="cam" autoplay playsinline muted></video>
+  <div id="dbg"></div>
+  <script src="../pet/live/math.js"></script>
+  <script src="../pet/live/gesture.js"></script>
+  <script src="sensor.js"></script>
+</body>
+</html>

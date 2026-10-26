@@ -160,6 +160,29 @@
           </div>
 
           <div class="card">
+            <div class="sec-label">活体形象</div>
+            <div class="row">
+              <div>
+                <div class="label">活体宠物</div>
+                <div class="hint">开启后宠物变成会呼吸、有情绪、会做各种小动作的「活物」；自定义形象仍使用静态立绘</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="livingPet"><span class="track"></span></label>
+            </div>
+
+            <div class="row">
+              <div>
+                <div class="label">摄像头手势镜像</div>
+                <div class="hint">开启后宠物模仿你摄像头里的手部动作：你抬手它抬手、你挥手它挥手。首次开启需授权摄像头，关闭即停止调用</div>
+              </div>
+              <label class="switch"><input type="checkbox" id="cameraMirror"><span class="track"></span></label>
+            </div>
+
+            <div class="row-sub wrap" id="camStatusRow" hidden>
+              <span class="cred-status"><span class="cred-badge off" id="camBadge">摄像头：未开启</span></span>
+            </div>
+          </div>
+
+          <div class="card">
             <div class="row stack">
               <div class="row-head">
                 <div>

@@ -33,6 +33,8 @@
   let press = null;
   let ignoreMouse = true;
 
+  let live = null;   // 活体引擎实例（livingPet 开启且非自定义形象时存在）
+
   let hovering = false;
   let hoverTimer = null;
   let petting = false;
@@ -59,6 +61,9 @@
     applyCharacter(char);
     applyScale();
     updateStats(cfg.stats, false);
+
+    // 活体引擎：内置角色默认启用（自定义形象无骨骼素材，自动回退静态立绘）
+    if (cfg.livingPet !== false && !char.custom) buildLive(char);
     statsEl.classList.toggle('always', !!cfg.showStats);
     Sound.setEnabled(cfg.sound !== false);
 
@@ -133,6 +138,7 @@
 
   function setOverride(name, ms) {
     override = { name, until: performance.now() + ms };
+    if (live) livePlay(name);
     clearTimeout(overrideTimer);
     overrideTimer = setTimeout(() => { override = null; refresh(); }, ms + 16);
     refresh();
@@ -146,7 +152,43 @@
 
   function setBase(name) {
     baseState = name;
+    if (live) liveBase(name);
     refresh();
+  }
+
+  /* ---------------- 活体引擎：构建 / 语义映射 ---------------- */
+  function buildLive(c) {
+    if (live) { live.destroy(); live = null; }
+    live = new window.LivePet(petWrap, c);
+    petWrap.classList.add('living');
+    live.setStats(cfg.stats);
+    live.setCameraMirror(!!cfg.cameraMirror);
+    live.start();
+  }
+
+  /** 把旧逻辑的「状态名」翻译成活体引擎的动作/情绪 */
+  function livePlay(name) {
+    if (!live) return;
+    switch (name) {
+      case 'happy': live.action('cheer'); live.impulse('happy'); break;
+      case 'excited': live.action('jump'); live.impulse('excited'); break;
+      case 'peek': live.action('peek'); live.impulse('surprise'); break;
+      case 'petting': live.action('purr'); live.impulse('petting'); break;
+      case 'clicking': live.action('pop'); live.impulse('poke'); break;
+      case 'typing': live.action('type'); break;
+      case 'reminding': live.action('holdSign'); live.impulse('calm'); break;
+      default: break;
+    }
+  }
+
+  function liveBase(name) {
+    if (!live) return;
+    if (name === 'sleepy') live.setSleeping(true);
+    else live.setSleeping(false);
+  }
+
+  function liveClear() {
+    if (live) live.clearAction();
   }
 
   /* ---------------- 气泡 ---------------- */
@@ -258,6 +300,7 @@
     sayRandom(char.petting, 5200);
     bumpPetting();
     setOverride('petting', 600000);
+    if (live) { live.action('purr'); live.impulse('petting'); }
     pettingTick = setInterval(() => {
       emitHearts(1);
       bumpPetting();
@@ -289,11 +332,13 @@
     api.bumpStat('mood', 2);
     setOverride(char.handClick ? 'happy' : 'clicking', 1250);
     sayRandom(char.poke, 3000);
+    if (live) { live.action(char.handClick ? 'cheer' : 'pop'); live.impulse('poke'); }
   }
 
   function ackRemind() {
     const t = currentRemind;
     currentRemind = null;
+    if (live) liveClear();
     if (t) api.ackReminder(t);
     setOverride('happy', 1800);
     emitHearts(2);
@@ -303,6 +348,7 @@
   function snoozeRemind() {
     const t = currentRemind;
     currentRemind = null;
+    if (live) liveClear();
     if (t) api.snoozeReminder(t);
     say('好，10 分钟后再提醒你。', 3200);
   }
@@ -416,6 +462,7 @@
 
     api.on('remind:fire', ({ type, text, state }) => {
       currentRemind = type;
+      if (live) live.setSign(text);
       setOverride(state || 'reminding', 13000);
       emitHearts(1);
       if (cfg.sound !== false) Sound.bell();
@@ -444,6 +491,7 @@
       setOverride(char.handClick ? 'happy' : 'clicking', 1500);
       sayRandom(char.greet || char.idle, 4200);
       emitHearts(1);
+      if (live) { live.action('wave'); live.impulse('greet'); }
     });
 
     api.on('pet:character', ({ id }) => {
@@ -455,6 +503,9 @@
       visibleState = '';
       setSprite(computeState());
       D.STATE_LIST.forEach(s => { const i = new Image(); i.src = ASSET(s); });
+      // 活体引擎随角色重建（自定义形象自动回退静态立绘）
+      if (live || (cfg.livingPet !== false && !char.custom)) buildLive(char);
+      if (!live) { visibleState = ''; setSprite(computeState()); }
     });
 
     api.on('pet:mode', () => { clearOverride(); setBase('idle'); });
@@ -463,6 +514,7 @@
     api.on('pet:walk', ({ on } = {}) => {
       walking = !!on;
       if (walking) { clearTimeout(hoverTimer); stopPetting(); }
+      if (live) live.setWalking(!!on);
       refresh();
     });
 
@@ -474,7 +526,16 @@
       // 自定义角色 / 台词覆盖可能已更新，刷新当前角色对象
       const map = D.runtimeCharacters(c).map;
       if (map[charId]) { char = map[charId]; applyCharacter(char); }
+      // 活体 / 摄像头开关切换
+      if (c.livingPet !== undefined) {
+        if (c.livingPet === false && live) { live.destroy(); live = null; petWrap.classList.remove('living'); visibleState = ''; setSprite(computeState()); }
+        else if (c.livingPet !== false && !live && !char.custom) { buildLive(char); }
+      }
+      if (c.cameraMirror !== undefined && live) live.setCameraMirror(!!c.cameraMirror);
     });
+
+    // 摄像头手势：实时镜像
+    api.on('hand:pose', g => { if (live) live.reactToHand(g); });
   }
 
   /* ---------------- 主动闲聊 / 打字 ---------------- */
