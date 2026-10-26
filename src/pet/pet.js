@@ -175,7 +175,9 @@
       // 把立绘从活体包裹层里放回去（构造中途抛错时 destroy 可能没跑）
       const lb = petWrap.querySelector('.live-body');
       if (lb) {
-        layers.forEach(l => { if (l && lb.contains(l)) petWrap.appendChild(l); });
+        layers.slice().reverse().forEach(l => {
+          if (l && lb.contains(l)) petWrap.insertBefore(l, petWrap.firstChild);
+        });
         lb.remove();
       }
       layers.forEach(l => { l.style.display = ''; });

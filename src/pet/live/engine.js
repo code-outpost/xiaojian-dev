@@ -109,7 +109,10 @@
     // 把立绘放回原位，保证退回静态模式时结构完全复原
     try {
       if (this.body) {
-        this.layers.forEach(l => { if (l && this.body.contains(l)) this.container.appendChild(l); });
+        // 反向插到最前面，最终顺序仍是 layerA, layerB, .zzz, .hearts
+        this.layers.slice().reverse().forEach(l => {
+          if (l && this.body.contains(l)) this.container.insertBefore(l, this.container.firstChild);
+        });
         this.body.style.transform = '';
         if (this.body.parentNode) this.body.parentNode.removeChild(this.body);
       }
