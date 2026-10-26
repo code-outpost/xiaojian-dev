@@ -5,7 +5,7 @@
  */
 const {
   app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut,
-  screen, nativeImage, powerMonitor, shell, dialog, safeStorage, session
+  screen, nativeImage, powerMonitor, shell, dialog, safeStorage, session, protocol
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -19,6 +19,15 @@ const DATA = require('./src/shared/dialogues.js');
 const IS_DEV = process.argv.includes('--dev');
 const SHOOT = process.argv.includes('--shoot');   // 开发自检：截图各窗口
 const ROOT = __dirname;
+
+// 自定义 app:// 协议：sensor 窗口用它加载内置的 MediaPipe 运行库与手部模型。
+// file:// 下 Chromium 会拦截 ES module 导入和 wasm 的 fetch，只有标准协议才能正常工作。
+try {
+  protocol.registerSchemesAsPrivileged([{
+    scheme: 'app',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
+  }]);
+} catch (_) { /* 重复注册忽略 */ }
 
 // 捕获默认 userData（产品名 Mochi → %APPDATA%/Mochi），用于「自定义数据保存位置」功能。
 // 必须在任何 setPath 覆盖之前读取，否则拿到的就是被覆盖后的值。
@@ -670,6 +679,44 @@ function createPetWindow() {
 let sensorWin = null;
 let handStatus = 'idle';   // idle | starting | active | denied | nocamp | unavailable
 
+const APP_MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.task': 'application/octet-stream',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2'
+};
+
+/** 注册 app:// 协议（须在 app ready 之后调用一次） */
+function registerAppProtocol() {
+  try {
+    protocol.handle('app', async (req) => {
+      try {
+        const u = new URL(req.url);
+        let rel = decodeURIComponent(u.pathname || '/');
+        if (!rel || rel === '/') rel = '/src/sensor/index.html';
+        const target = path.normalize(path.join(ROOT, rel));
+        // 防目录穿越：必须仍在应用根目录内
+        if (!target.startsWith(ROOT)) return new Response('forbidden', { status: 403 });
+        const data = await fs.promises.readFile(target);
+        const mime = APP_MIME[path.extname(target).toLowerCase()] || 'application/octet-stream';
+        return new Response(data, { status: 200, headers: { 'content-type': mime } });
+      } catch (_) {
+        return new Response('not found', { status: 404 });
+      }
+    });
+  } catch (e) {
+    diag('app protocol 注册失败：' + (e && e.message));
+  }
+}
+
 function createSensorWindow() {
   if (sensorWin) return;
   sensorWin = new BrowserWindow({
@@ -682,7 +729,7 @@ function createSensorWindow() {
     resizable: false,
     webPreferences: baseWebPrefs()
   });
-  sensorWin.loadFile(path.join(ROOT, 'src', 'sensor', 'index.html'));
+  sensorWin.loadURL('app://mochi/src/sensor/index.html');
   hookLog(sensorWin, 'sensor');
   sensorWin.on('closed', () => { sensorWin = null; });
 }
@@ -691,14 +738,23 @@ function createSensorWindow() {
 function setSensorActive(on) {
   if (!sensorWin) createSensorWindow();
   if (!sensorWin) return;
-  if (on) {
-    // 移到屏幕外：隐藏窗口仍能取摄像头，但用户看不到任何方块
-    sensorWin.setPosition(-3000, -3000);
-    sensorWin.show();
+  const apply = () => {
+    if (!sensorWin || sensorWin.isDestroyed()) return;
+    if (on) {
+      // 移到屏幕外：隐藏窗口仍能取摄像头，但用户看不到任何方块
+      sensorWin.setPosition(-3000, -3000);
+      sensorWin.show();
+    } else {
+      sensorWin.hide();
+    }
+    try { sensorWin.webContents.send('sensor:control', !!on); } catch (_) {}
+  };
+  // 窗口刚创建时还没加载完，此时 send 会丢 → 等首帧加载完再下发控制指令
+  if (sensorWin.webContents.isLoadingMainFrame && sensorWin.webContents.isLoadingMainFrame()) {
+    sensorWin.webContents.once('did-finish-load', apply);
   } else {
-    sensorWin.hide();
+    apply();
   }
-  sensorWin.webContents.send('sensor:control', !!on);
 }
 
 /* ------------------------------------------------------------------ *
@@ -2580,9 +2636,22 @@ function registerIpc() {
   ipcMain.handle('hand:status', () => handStatus);
 
   // 摄像头权限：仅允许隐藏的 sensor 窗口使用媒体设备（其它窗口一律拒绝）
+  // ⚠️ 这里拿到的 wc 是 WebContents，不是 BrowserWindow；之前写成 wc === sensorWin 恒为 false → 永远拒绝。
+  const isSensorContents = (wc) => {
+    if (!wc) return false;
+    try {
+      if (sensorWin && !sensorWin.isDestroyed() && wc === sensorWin.webContents) return true;
+      return /[/\\]src[/\\]sensor[/\\]/.test(wc.getURL() || '');
+    } catch (_) { return false; }
+  };
   session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
-    if (permission === 'media' && wc === sensorWin) return cb(true);
+    if (permission === 'media' && isSensorContents(wc)) return cb(true);
     cb(false);
+  });
+  // Chromium 的媒体设备检查也会走这里；不补这个，getUserMedia 仍可能被判定无权限
+  session.defaultSession.setPermissionCheckHandler((wc, permission) => {
+    if (permission === 'media') return isSensorContents(wc);
+    return true;
   });
 
   ipcMain.on('pet:menu', () => {
@@ -3032,7 +3101,8 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc();
     createPetWindow();
     createTray();
-    // 摄像头手势感知窗口（隐藏）：若用户已开启镜像，则在首屏后启动
+    // 注册 app:// 协议（sensor 窗口加载内置 MediaPipe 资源用），再建隐藏感知窗口
+    registerAppProtocol();
     createSensorWindow();
     if (config.cameraMirror) setTimeout(() => setSensorActive(true), 2000);
 

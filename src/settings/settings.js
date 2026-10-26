@@ -945,6 +945,7 @@
   });
   // 摄像头状态实时更新
   api.on('hand:status', s => setCamBadge(s));
+  updateCamStatusVisibility();
   if (cfg.cameraMirror) refreshCamStatus();
 
   function updateCamStatusVisibility() {
@@ -956,9 +957,9 @@
       idle: ['摄像头：待命', 'off'],
       starting: ['摄像头：启动中…', 'warn'],
       active: ['摄像头：已连接，比划一下试试', 'ok'],
-      denied: ['摄像头：被拒绝，请在系统设置允许', 'off'],
+      denied: ['摄像头：被拒绝，请在系统设置允许', 'warn'],
       nocamp: ['摄像头：未检测到摄像头', 'off'],
-      unavailable: ['手势模型加载失败（可能离线）', 'warn']
+      unavailable: ['手势模型加载失败（请检查网络或重开）', 'warn']
     };
     const [text, cls] = map[s] || ['摄像头：未知', 'off'];
     el.camBadge.textContent = text;

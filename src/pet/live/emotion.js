@@ -12,7 +12,8 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const M = (typeof require !== 'undefined') ? require('./math.js') : (root.LiveMath);
+  // 注意：此处不能用外层 IIFE 的形参 root（不在 factory 闭包内），浏览器里取全局 self
+  const M = (typeof require !== 'undefined') ? require('./math.js') : (typeof self !== 'undefined' ? self : globalThis).LiveMath;
   const { clamp, map, lerp } = M;
 
   // 事件 → 对 PAD 的瞬时冲量（被衰减）

@@ -159,11 +159,23 @@
   /* ---------------- 活体引擎：构建 / 语义映射 ---------------- */
   function buildLive(c) {
     if (live) { live.destroy(); live = null; }
-    live = new window.LivePet(petWrap, c);
-    petWrap.classList.add('living');
-    live.setStats(cfg.stats);
-    live.setCameraMirror(!!cfg.cameraMirror);
-    live.start();
+    try {
+      live = new window.LivePet(petWrap, c);
+      petWrap.classList.add('living');
+      live.setStats(cfg.stats);
+      live.setCameraMirror(!!cfg.cameraMirror);
+      live.start();
+    } catch (e) {
+      // 活体引擎异常时绝不连累整只宠物：清理并回退静态立绘
+      console.error('[mochi] 活体引擎启动失败，已回退静态立绘：', e);
+      try { if (live) live.destroy(); } catch (_) {}
+      live = null;
+      petWrap.classList.remove('living');
+      petWrap.querySelectorAll('.live-svg').forEach(el => el.remove());
+      layers.forEach(l => { l.style.display = ''; });
+      visibleState = '';
+      setSprite(computeState());
+    }
   }
 
   /** 把旧逻辑的「状态名」翻译成活体引擎的动作/情绪 */

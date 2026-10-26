@@ -16,29 +16,48 @@
   let running = false;
   let lastSent = 0;
 
-  const MP_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
-  const MP_WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
-  const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+  // 优先内置资源（经 app:// 协议加载，彻底离线、不受墙/CDN 影响）；失败再回退 CDN
+  const LOCAL = {
+    lib: './vendor/vision_bundle.mjs',
+    wasm: './vendor/wasm',
+    model: './vendor/hand_landmarker.task'
+  };
+  const CDN = {
+    lib: 'https://unpkg.com/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs',
+    wasm: 'https://unpkg.com/@mediapipe/tasks-vision@0.10.14/wasm',
+    model: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+  };
 
   function sendStatus(s) { ipc.sendSensorStatus(s); dbg.textContent = s; }
 
+  async function loadLandmarker(src, delegate) {
+    const vision = await import(/* @vite-ignore */ src.lib);
+    const { HandLandmarker, FilesetResolver } = vision;
+    const fileset = await FilesetResolver.forVisionTasks(src.wasm);
+    return await HandLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: src.model, delegate },
+      runningMode: 'VIDEO',
+      numHands: 1
+    });
+  }
+
   async function ensureModel() {
     if (landmarker) return true;
-    try {
-      const vision = await import(/* @vite-ignore */ MP_URL);
-      const { HandLandmarker, FilesetResolver } = vision;
-      const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
-      landmarker = await HandLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-        runningMode: 'VIDEO',
-        numHands: 1
-      });
-      return true;
-    } catch (e) {
-      console.error('[sensor] MediaPipe 加载失败', e);
-      sendStatus('unavailable');
-      return false;
+    const attempts = [
+      { src: LOCAL, delegate: 'GPU' }, { src: LOCAL, delegate: 'CPU' },
+      { src: CDN, delegate: 'GPU' }, { src: CDN, delegate: 'CPU' }
+    ];
+    for (const a of attempts) {
+      try {
+        landmarker = await loadLandmarker(a.src, a.delegate);
+        console.log('[sensor] 模型就绪：', a.src === LOCAL ? '内置' : 'CDN', a.delegate);
+        return true;
+      } catch (e) {
+        console.warn('[sensor] 模型加载失败', a.src === LOCAL ? '内置' : 'CDN', a.delegate, e && e.message);
+      }
     }
+    sendStatus('unavailable');
+    return false;
   }
 
   async function ensureCamera() {

@@ -847,3 +847,18 @@ input[type="time"]:focus { border-color: var(--theme); }
   border: 1px solid rgba(24, 38, 66, .10);
 }
 .cred-badge:empty { display: none; }
+
+/* ---------------- 布局修正 ---------------- */
+/* hidden 属性对 display:flex 的元素无效（如 #camStatusRow），必须显式隐藏 */
+[hidden] { display: none !important; }
+
+/* 中文提示没有断词点，flex 项 min-content 会被撑到整行宽 → 把右侧滑块/开关挤出卡片。
+   允许收缩后文本才会正常换行。 */
+.row > div:first-child { min-width: 0; }
+.row .slider-wrap { flex: 0 0 auto; }
+
+/* 活体形象卡片里的状态行是 .card 的直接子元素，卡片本身无内边距，需自带左右/下边距，
+   否则会顶到卡片边缘、看起来像溢出 */
+#camStatusRow {
+  margin: 2px 18px 15px;
+}

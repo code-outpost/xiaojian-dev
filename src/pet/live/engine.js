@@ -10,12 +10,14 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
+  // 注意：此处不能用外层 IIFE 的形参 root（不在 factory 闭包内），浏览器里取全局 self
+  const G = (typeof self !== 'undefined' ? self : globalThis);
   const M = (typeof require !== 'undefined')
-    ? require('./math.js') : root.LiveMath;
-  const Emotion = (typeof require !== 'undefined') ? require('./emotion.js') : root.LiveEmotion;
-  const { ACTIONS, IdleScheduler } = (typeof require !== 'undefined') ? require('./actions.js') : root.LiveActions;
-  const Skeleton = (typeof require !== 'undefined') ? require('./skeleton.js') : root.LiveSkeleton;
-  const Rigs = (typeof require !== 'undefined') ? require('./rigs.js') : root.LiveRigs;
+    ? require('./math.js') : G.LiveMath;
+  const Emotion = (typeof require !== 'undefined') ? require('./emotion.js') : G.LiveEmotion;
+  const { ACTIONS, IdleScheduler } = (typeof require !== 'undefined') ? require('./actions.js') : G.LiveActions;
+  const Skeleton = (typeof require !== 'undefined') ? require('./skeleton.js') : G.LiveSkeleton;
+  const Rigs = (typeof require !== 'undefined') ? require('./rigs.js') : G.LiveRigs;
   const { clamp, lerp, damp, dampAngle, osc } = M;
 
   function LivePet(container, char) {
@@ -32,14 +34,14 @@
     svg.style.position = 'absolute';
     svg.style.inset = '0';
     svg.style.overflow = 'visible';
-    // 隐藏旧立绘的两层 img
-    const lay = container.querySelectorAll('.layer');
-    lay.forEach(l => { l.style.display = 'none'; });
     container.insertBefore(svg, container.firstChild);
 
+    // 先建骨架：只有骨架成功构建后才隐藏旧立绘，避免中途抛错导致整只空白
     this.skeleton = new Skeleton(svg, rig, {
       body: char.color, deep: char.colorDeep, soft: char.colorSoft
     });
+    const lay = container.querySelectorAll('.layer');
+    lay.forEach(l => { l.style.display = 'none' });
 
     this.emotion = new Emotion();
     this.scheduler = new IdleScheduler();

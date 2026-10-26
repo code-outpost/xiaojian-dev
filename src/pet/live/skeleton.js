@@ -56,9 +56,10 @@
     // 影子
     mk('ellipse', { cx: 100, cy: 208, rx: rig.bodyW * 0.9, ry: 7, fill: 'rgba(28,38,58,0.18)' }, root);
 
-    // 尾巴（在身体后面）
+    // 尾巴（在身体后面）：组直接定位到身体后下方的锚点，路径相对该锚点绘制
     if (rig.tail) {
-      const tail = mk('g', { id: 'tail' }, root);
+      const ax = 100 + rig.bodyW * 0.7, ay = 170;
+      const tail = mk('g', { id: 'tail', transform: `translate(${ax},${ay})` }, root);
       mk('path', { d: 'M0 0 q 26 -6 30 -34', fill: 'none', stroke: c.deep, 'stroke-width': 11, 'stroke-linecap': 'round' }, tail);
       mk('path', { d: 'M0 0 q 26 -6 30 -34', fill: 'none', stroke: c.body, 'stroke-width': 6, 'stroke-linecap': 'round' }, tail);
       this.refs.tail = tail;
@@ -149,7 +150,7 @@
 
   /** 构建一条 2 段肢体（上臂+前臂，嵌套旋转组）。leg=true 时末端画脚 */
   Skeleton.prototype.buildLimb = function (parent, id, style, leg) {
-    if (style === 'none') { const g = mk('g', { id }, parent); g.style.display = 'none'; return g; }
+    if (style === 'none') { const g = mk('g', { id }, parent); g.style.display = 'none'; return { g, none: true }; }
     const rig = this.rig;
     let L1, L2, anchorX, anchorY, w;
     if (leg) {
@@ -170,7 +171,7 @@
     mk('line', { x1: 0, y1: 0, x2: 0, y2: L2, stroke: this.colors.body, 'stroke-width': w - 3, 'stroke-linecap': 'round' }, fore);
     const hand = mk('circle', { cx: 0, cy: L2, r: (style === 'hand' ? this.rig.handSize : this.rig.pawSize), fill: this.colors.deep }, fore);
     if (style === 'paw') { hand.setAttribute('fill', this.colors.body); hand.setAttribute('stroke', this.colors.deep); hand.setAttribute('stroke-width', 2); }
-    return { g, upper, fore, hand, L1, L2, w, isArm: id.indexOf('arm') === 0 };
+    return { g, upper, fore, hand, L1, L2, w, isArm: id.indexOf('arm') === 0, _ax: anchorX, _ay: anchorY };
   };
 
   /** 每帧写入姿态。pose 字段见 engine 注释。 */
@@ -218,14 +219,17 @@
     // 腮红
     if (r.blushL) { const bl = p.blush || 0; r.blushL.setAttribute('opacity', bl * 0.8); r.blushR.setAttribute('opacity', bl * 0.8); }
 
-    // 尾巴摆动
-    if (r.tail) r.tail.setAttribute('transform', `translate(${100 + rig.bodyW * 0.7}, 170) rotate(${p.tailWag || 0}) translate(${-(100 + rig.bodyW * 0.7)}, -170)`);
+    // 尾巴摆动：围绕身体后下方的固定锚点旋转
+    if (r.tail) {
+      const tAx = 100 + rig.bodyW * 0.7, tAy = 170;
+      r.tail.setAttribute('transform', `translate(${tAx},${tAy}) rotate(${p.tailWag || 0})`);
+    }
 
     // 腿（静置或动作）
     this._poseLimb(r.legL, p.legs && p.legs.L, rig);
     this._poseLimb(r.legR, p.legs && p.legs.R, rig);
-    this._poseLimb(r.armL, p.arms && p.arms.L, rig);
-    this._poseLimb(r.armR, p.arms && p.arms.R, rig);
+    this._poseLimb(r.armL, p.armL, rig);
+    this._poseLimb(r.armR, p.armR, rig);
 
     // 情绪提亮：整体往亮调偏
     if (p.glow != null && Math.abs(p.glow) > 0.01) {
@@ -243,7 +247,7 @@
   };
 
   Skeleton.prototype._poseLimb = function (limb, t, rig) {
-    if (!limb || limb.g.style.display === 'none') return;
+    if (!limb || !limb.g || limb.g.style.display === 'none') return;
     const sh = t ? (t.sh || 0) : 0;
     const el = t ? (t.el || 0) : 0;
     // anchor（_ax/_ay）固定，仅追加旋转；前臂相对上臂末端再旋转
