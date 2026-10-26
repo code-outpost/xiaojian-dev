@@ -945,11 +945,13 @@
   });
   // 摄像头状态实时更新
   api.on('hand:status', s => setCamBadge(s));
-  updateCamStatusVisibility();
-  if (cfg.cameraMirror) refreshCamStatus();
+  // ⚠️ 这里是同步初始化阶段，cfg 仍为 null（要到文件末尾 init 里 await getConfig 才有值）。
+  // 之前在此直接写 if (cfg.cameraMirror) → TypeError，整段 IIFE 中断，
+  // 导致后面导航绑定与 fill() 全部不执行（症状：设置页点不动、所有开关都是关）。
+  // 初始徽标改到 init 中 cfg 就绪后刷新。
 
   function updateCamStatusVisibility() {
-    if (el.camStatusRow) el.camStatusRow.hidden = !el.cameraMirror.checked;
+    if (el.camStatusRow) el.camStatusRow.hidden = !(el.cameraMirror && el.cameraMirror.checked);
   }
   function setCamBadge(s) {
     if (!el.camBadge) return;
@@ -1409,6 +1411,9 @@
     buildCharacters();
     fill();
 
+    // cfg 就绪后再同步摄像头徽标（此时才允许读 cfg）
+    if (cfg.cameraMirror) refreshCamStatus();
+
     // 从右键菜单 / 托盘菜单深链进来的：?pane=weather 之类，直接切到对应 tab
     try {
       const pane = new URLSearchParams(location.search).get('pane');
@@ -1430,5 +1435,8 @@
       if (document.activeElement && document.activeElement.tagName === 'SELECT') return;
       fill();
     });
-  })();
+  })().catch(err => {
+    // 初始化失败时至少留下可排查的日志，不要静默把整个设置页废掉
+    try { console.error('[settings] 初始化失败：', err); } catch (_) {}
+  });
 })();
