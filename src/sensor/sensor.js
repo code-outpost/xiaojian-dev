@@ -8,7 +8,9 @@
 (() => {
   const ipc = window.mochi;
   const video = document.getElementById('cam');
-  const dbg = document.getElementById('dbg');
+  // ⚠️ 别改名回 dbg：Emscripten 的 wasm 加载器用 `typeof dbg !== "undefined"` 判断是否调用调试钩子，
+  // 而带 id 的元素会自动成为 window.dbg → 它会把 DOM 元素当函数调 → "dbg is not a function"。
+  const dbg = document.getElementById('sensorDbg');
 
   let stream = null;
   let landmarker = null;

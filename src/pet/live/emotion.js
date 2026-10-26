@@ -72,7 +72,7 @@
 
   /**
    * 每帧更新，返回「姿势/表情目标」。dt 秒。
-   * 返回的 target 全部是归一化的语义量，由 skeleton 解释成具体角度/坐标。
+   * 返回的 target 全部是归一化的语义量，由引擎解释成整体形变（位移/旋转/挤压拉伸）。
    */
   Emotion.prototype.update = function (dt) {
     this.t += dt;
