@@ -727,7 +727,10 @@ function createSensorWindow() {
     transparent: false,
     skipTaskbar: true,
     resizable: false,
-    webPreferences: baseWebPrefs()
+    // ⚠️ 关键：这个窗口要移到屏幕外（-3000,-3000）藏起来，Chromium 会把它判为
+    // 「不可见/被遮挡」并节流：requestAnimationFrame 直接停摆、setInterval 降到 1/s。
+    // 不关掉节流的话，模型明明加载好了却一帧都不识别 —— 表现就是「已连接但毫无反应」。
+    webPreferences: baseWebPrefs({ backgroundThrottling: false })
   });
   sensorWin.loadURL('app://mochi/src/sensor/index.html');
   hookLog(sensorWin, 'sensor');
@@ -2402,6 +2405,20 @@ function initAutoUpdater() {
     const askedRecently = Date.now() - lastUpdateAskAt < 15 * 60 * 1000;
     const networkish = /net::|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|socket hang up|status code 5\d\d|ERR_UPDATER_NETWORK/i.test(msg);
     if (!askedRecently && networkish) return;
+    // 便携版 / 手动拷贝的目录里没有 app-update.yml，electron-updater 会抛 ENOENT。
+    // 这不是故障，只是「这个版本没接更新通道」，弹窗只会吓到用户 → 静默记日志即可。
+    if (/ENOENT|app-update\.yml|latest\.yml|no such file|Cannot find/i.test(msg)) {
+      diag('[updater] 当前版本未内置更新通道，已跳过：' + msg);
+      // 用户是主动点的「检查更新」，得给个说法，但不能报成故障
+      if (askedRecently) {
+        notifyUpdate({
+          kind: 'info',
+          title: '这个版本没接自动更新',
+          text: '当前是手动分发的版本，没有内置更新通道。\n想升级的话到 Release 页面下载最新安装包覆盖安装即可。'
+        });
+      }
+      return;
+    }
     notifyUpdate({
       kind: 'error',
       title: '更新没能完成',

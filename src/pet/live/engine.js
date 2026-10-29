@@ -138,8 +138,11 @@
     if (!on) { this.hand = null; this.handMix = 0; }
   };
   LivePet.prototype.reactToHand = function (h) {
+    const wasOn = !!(this.hand && this.hand.present) && (this.t - this.handStamp) <= 0.45;
     this.hand = h;
     this.handStamp = this.t;
+    // 手刚进入画面的那一帧给个「打招呼」冲量，让「它看见你了」这件事一眼能看出来
+    if (!wasOn && h && h.present && this.cameraMirror) this.emotion.impulse('greet', 0.7);
   };
 
   /* ---------------- 每帧 ---------------- */
@@ -212,14 +215,17 @@
     const hy = clamp(h.palmY || 0, -1, 1);               // +1 = 手举高
     const open = clamp(h.openness != null ? h.openness : 0.5, 0, 1);
 
-    // 你把手移到右边，它往右挪并向右倾（像照镜子）；
-    // 你把手抬高，它踮起来并微微拉长；张开手会显得更「精神」一点。
+    // 幅度要够大才看得出来（之前 ±30px / ±10° 太含蓄，用户以为没反应）：
+    // 手移到右边 → 整只往右挪 + 右倾（像照镜子）；手举高 → 踮起来并拉长；
+    // 张开手 → 显得更「精神」（略微放大）；握拳/捏合 → 缩一点。
+    const po = h.pointing ? 1 : 0;
+    const pi = h.pinch ? 1 : 0;
     return {
-      x: hx * 30,
-      y: -hy * 20,
-      rot: hx * 10,
-      sy: 1 + hy * 0.06 + (open - 0.5) * 0.05,
-      sx: 1 - hy * 0.04 + (open - 0.5) * 0.03
+      x: hx * 52 + po * hx * 10,
+      y: -hy * 30 + (open - 0.5) * -6,
+      rot: hx * 16 + po * (hx >= 0 ? 5 : -5),
+      sy: 1 + hy * 0.10 + (open - 0.5) * 0.12 - pi * 0.05,
+      sx: 1 - hy * 0.06 + (open - 0.5) * 0.08 - pi * 0.04
     };
   };
 

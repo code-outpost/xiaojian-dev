@@ -30,7 +30,13 @@
     model: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
   };
 
-  function sendStatus(s) { ipc.sendSensorStatus(s); dbg.textContent = s; }
+  let curStatus = '';
+  function sendStatus(s) {
+    if (s === curStatus) return;   // 状态没变就别每帧刷 IPC
+    curStatus = s;
+    ipc.sendSensorStatus(s);
+    dbg.textContent = s;
+  }
 
   async function loadLandmarker(src, delegate) {
     const vision = await import(/* @vite-ignore */ src.lib);
@@ -43,15 +49,22 @@
     });
   }
 
+  // 顺序：内置 CPU → 内置 GPU → CDN CPU → CDN GPU。
+  // ⚠️ 先试 CPU 而不是 GPU：这个窗口藏在屏幕外，WebGL 上下文随时可能丢失，
+  // GPU delegate 会在运行中突然全部报错；CPU 没有这个问题，1 只手 30fps 完全够。
+  const ATTEMPTS = [
+    { src: LOCAL, delegate: 'CPU' }, { src: LOCAL, delegate: 'GPU' },
+    { src: CDN, delegate: 'CPU' }, { src: CDN, delegate: 'GPU' }
+  ];
+  let usedAttempt = 0;
+
   async function ensureModel() {
     if (landmarker) return true;
-    const attempts = [
-      { src: LOCAL, delegate: 'GPU' }, { src: LOCAL, delegate: 'CPU' },
-      { src: CDN, delegate: 'GPU' }, { src: CDN, delegate: 'CPU' }
-    ];
-    for (const a of attempts) {
+    for (let i = 0; i < ATTEMPTS.length; i++) {
+      const a = ATTEMPTS[i];
       try {
         landmarker = await loadLandmarker(a.src, a.delegate);
+        usedAttempt = i;
         console.log('[sensor] 模型就绪：', a.src === LOCAL ? '内置' : 'CDN', a.delegate);
         return true;
       } catch (e) {
@@ -60,6 +73,29 @@
     }
     sendStatus('unavailable');
     return false;
+  }
+
+  /** 连续多帧失败 → 多半是 GPU 上下文丢了，换下一种组合重建一次 */
+  let rebuilding = false;
+  async function rebuildModel() {
+    if (rebuilding) return;
+    rebuilding = true;
+    try {
+      try { if (landmarker && landmarker.close) landmarker.close(); } catch (_) {}
+      landmarker = null;
+      const rest = ATTEMPTS.filter((_, i) => i !== usedAttempt);
+      for (const a of rest) {
+        try {
+          landmarker = await loadLandmarker(a.src, a.delegate);
+          errors = 0;
+          console.log('[sensor] 已重建模型：', a.src === LOCAL ? '内置' : 'CDN', a.delegate);
+          return;
+        } catch (e) { console.warn('[sensor] 重建失败', a.delegate, e && e.message); }
+      }
+      sendStatus('unavailable');
+    } finally {
+      rebuilding = false;
+    }
   }
 
   async function ensureCamera() {
@@ -76,21 +112,58 @@
     }
   }
 
-  async function loop() {
+  /**
+   * 识别循环。
+   * ⚠️ 用 setInterval 而不是 requestAnimationFrame：这个窗口被主进程移到 -3000,-3000 藏起来，
+   * Chromium 会认为它被遮挡而**停止 rAF**（合成器不产帧），模型再好也一帧都跑不了。
+   * setInterval 配合窗口的 backgroundThrottling:false 才能稳定出帧。
+   */
+  let timer = 0;
+  let wdTimer = 0;
+  let frames = 0;      // 已成功识别的帧数
+  let errors = 0;      // 连续失败帧数
+  let lastFrameAt = 0;
+  let lastHandAt = 0;
+  let startAt = 0;
+
+  function tick() {
     if (!running) return;
-    if (landmarker && video.readyState >= 2) {
+    // 窗口被藏到屏幕外，Chromium 有可能把 video 当「不可见」而暂停解码 → 主动拉起来
+    if (video.paused) { try { video.play().catch(() => {}); } catch (_) {} }
+    if (landmarker && video.readyState >= 2 && video.videoWidth > 0) {
       try {
         const res = landmarker.detectForVideo(video, performance.now());
         const hands = res && res.landmarks ? res.landmarks : [];
         const g = window.LiveGesture.analyze(hands);
-        const now = performance.now();
-        if (now - lastSent > 60) { // ~16fps
+        frames++;
+        errors = 0;
+        lastFrameAt = performance.now();
+        const now = lastFrameAt;
+        if (now - lastSent > 60 || (g.present && now - lastSent > 30)) { // 有手时跟得更紧
           lastSent = now;
           ipc.sendSensorHand(g);
         }
-      } catch (_) { /* 单帧失败忽略 */ }
+        // 让用户能一眼看出「它看见我的手了」：识别到手 → tracking；
+        // 手离开 1.2s 才回到 active（留点缓冲，避免手一抖就闪）
+        if (g.present) { lastHandAt = now; sendStatus('tracking'); }
+        else if (now - lastHandAt > 1200) sendStatus('active');
+      } catch (e) {
+        errors++;
+        if (errors === 10) console.warn('[sensor] 连续识别失败：', e && e.message);
+        if (errors >= 20) { errors = 0; rebuildModel(); }
+      }
     }
-    requestAnimationFrame(loop);
+  }
+
+  /** 看门狗：摄像头开着却一直没画面 / 一直没识别，要如实告诉用户，别一直挂着「已连接」 */
+  function watchdog() {
+    if (!running) return;
+    const now = performance.now();
+    if (frames === 0 && now - startAt > 4000) {
+      sendStatus(video.readyState >= 2 ? 'noface' : 'noframe');
+    } else if (frames > 0 && now - lastFrameAt > 3000) {
+      sendStatus('noframe');   // 之前能动，现在卡住了
+    }
   }
 
   async function start() {
@@ -98,16 +171,25 @@
     active = true;
     sendStatus('starting');
     const okCam = await ensureCamera();
-    if (!okCam) return;
+    if (!okCam) { active = false; return; }
     const okModel = await ensureModel();
-    if (!okModel) return;
+    if (!okModel) { active = false; return; }
+    frames = 0;
+    startAt = performance.now();
+    lastFrameAt = startAt;
     sendStatus('active');
-    if (!running) { running = true; loop(); }
+    if (!running) {
+      running = true;
+      timer = setInterval(tick, 33);      // ~30fps
+      wdTimer = setInterval(watchdog, 1500);
+    }
   }
 
   function stop() {
     active = false;
     running = false;
+    if (timer) { clearInterval(timer); timer = 0; }
+    if (wdTimer) { clearInterval(wdTimer); wdTimer = 0; }
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     ipc.sendSensorHand({ present: false });
     sendStatus('idle');

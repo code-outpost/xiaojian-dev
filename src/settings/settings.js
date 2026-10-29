@@ -938,7 +938,11 @@
   el.livingPet.addEventListener('change', () => patch({ livingPet: el.livingPet.checked }));
   el.cameraMirror.addEventListener('change', () => {
     const on = el.cameraMirror.checked;
-    patch({ cameraMirror: on });
+    // 手势镜像必须靠活体引擎才能表现出来：顺手把「活体形象」也打开，
+    // 否则用户开了摄像头却看到宠物一动不动，会以为功能坏了。
+    const extra = (on && el.livingPet && !el.livingPet.checked) ? { livingPet: true } : {};
+    if (extra.livingPet) { el.livingPet.checked = true; }
+    patch(Object.assign({ cameraMirror: on }, extra));
     api.sensorSetActive(on);
     updateCamStatusVisibility();
     if (on) refreshCamStatus();
@@ -958,10 +962,13 @@
     const map = {
       idle: ['摄像头：待命', 'off'],
       starting: ['摄像头：启动中…', 'warn'],
-      active: ['摄像头：已连接，比划一下试试', 'ok'],
+      active: ['摄像头：已连接，把手举到镜头前', 'ok'],
+      tracking: ['正在跟着你的手动 ✓', 'ok'],
       denied: ['摄像头：被拒绝，请在系统设置允许', 'warn'],
       nocamp: ['摄像头：未检测到摄像头', 'off'],
-      unavailable: ['手势模型加载失败（请检查网络或重开）', 'warn']
+      unavailable: ['手势模型加载失败（请检查网络或重开）', 'warn'],
+      noframe: ['摄像头已开但没有画面（可能被其它程序占用）', 'warn'],
+      noface: ['摄像头有画面但没识别到，把手举到镜头前', 'warn']
     };
     const [text, cls] = map[s] || ['摄像头：未知', 'off'];
     el.camBadge.textContent = text;
