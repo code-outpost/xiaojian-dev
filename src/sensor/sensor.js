@@ -45,7 +45,12 @@
     return await HandLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: src.model, delegate },
       runningMode: 'VIDEO',
-      numHands: 1
+      numHands: 1,
+      // ⚠️ 高敏感：默认 0.5 太保守，光线一般 / 手稍远 / 半遮挡就检测不到。
+      // 降到 0.3 让模型更「愿意」认定这是一只手。
+      minHandDetectionConfidence: 0.3,
+      minHandPresenceConfidence: 0.3,
+      minTrackingConfidence: 0.3
     });
   }
 
@@ -101,7 +106,7 @@
   async function ensureCamera() {
     if (stream) return true;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
       video.srcObject = stream;
       await video.play().catch(() => {});
       return true;

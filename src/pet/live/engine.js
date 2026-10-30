@@ -58,6 +58,7 @@
     this.hand = null;
     this.handStamp = -99;
     this.handMix = 0;          // 手势权重 0..1（有手时淡入，离开时淡出）
+    this._hx = 0; this._hy = 0; // 上一帧手掌归一化位置，用于放大「小幅移动」
 
     // 状态
     this.walking = false;
@@ -142,7 +143,10 @@
     this.hand = h;
     this.handStamp = this.t;
     // 手刚进入画面的那一帧给个「打招呼」冲量，让「它看见你了」这件事一眼能看出来
-    if (!wasOn && h && h.present && this.cameraMirror) this.emotion.impulse('greet', 0.7);
+    if (!wasOn && h && h.present && this.cameraMirror) {
+      this.emotion.impulse('greet', 1.0);
+      this.emotion.impulse('excited', 0.35);
+    }
   };
 
   /* ---------------- 每帧 ---------------- */
@@ -208,25 +212,35 @@
   LivePet.prototype.handTarget = function () {
     if (!this.cameraMirror) return null;
     const h = this.hand;
-    if (!h || !h.present) return null;
-    if ((this.t - this.handStamp) > 0.45) return null;   // 手离开画面一会儿就交还情绪驱动
+    if (!h || !h.present) { this._hx = 0; this._hy = 0; return null; }
+    if ((this.t - this.handStamp) > 0.6) { this._hx = 0; this._hy = 0; return null; }
 
     const hx = clamp(h.palmX || 0, -1, 1);
     const hy = clamp(h.palmY || 0, -1, 1);               // +1 = 手举高
     const open = clamp(h.openness != null ? h.openness : 0.5, 0, 1);
 
-    // 幅度要够大才看得出来（之前 ±30px / ±10° 太含蓄，用户以为没反应）：
-    // 手移到右边 → 整只往右挪 + 右倾（像照镜子）；手举高 → 踮起来并拉长；
-    // 张开手 → 显得更「精神」（略微放大）；握拳/捏合 → 缩一点。
+    // 手部移动速度：把小幅、快速的动作也放大，让它「跟手」更灵敏（高敏感）。
+    // ⚠️ 速度项要钳制：手突然跳变（快速挥手/测试直跳）时若用原始 delta 会爆冲甚至方向反转，
+    // 钳到 ±0.18 既能放大小幅动作，又不会抖。
+    const vx = clamp(hx - this._hx, -0.18, 0.18);
+    const vy = clamp(hy - this._hy, -0.18, 0.18);
+    this._hx = hx; this._hy = hy;
+    const move = clamp(Math.hypot(vx, vy) * 5, 0, 1);
+
     const po = h.pointing ? 1 : 0;
     const pi = h.pinch ? 1 : 0;
-    return {
-      x: hx * 52 + po * hx * 10,
-      y: -hy * 30 + (open - 0.5) * -6,
-      rot: hx * 16 + po * (hx >= 0 ? 5 : -5),
-      sy: 1 + hy * 0.10 + (open - 0.5) * 0.12 - pi * 0.05,
-      sx: 1 - hy * 0.06 + (open - 0.5) * 0.08 - pi * 0.04
-    };
+
+    // 只要手在画面里，宠物就「察觉到你」：整体微微挺起 + 放大一点，
+    // 即使手停在中央、一动不动也看得见反应（之前中央手 = 零位移 → 误以为没反应）。
+    const PERK = 0.10;
+
+    // 位置镜像幅度加大（之前 ±52/±30/±16 太含蓄）
+    const x = hx * 72 + vx * 120 + po * hx * 14;
+    const y = -hy * 46 + vy * 80 + (open - 0.5) * -12 - PERK * 70;
+    const rot = hx * 22 + vx * 28 + po * (hx >= 0 ? 6 : -6);
+    const sy = 1 + hy * 0.14 + (open - 0.5) * 0.18 + move * 0.08 + PERK - pi * 0.06;
+    const sx = 1 - hy * 0.08 + (open - 0.5) * 0.12 + move * 0.05 + PERK - pi * 0.05;
+    return { x, y, rot, sx, sy };
   };
 
   LivePet.prototype._apply = function () {
