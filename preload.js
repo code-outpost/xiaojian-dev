@@ -15,6 +15,7 @@ const EVENTS = [
   'activity:change',
   'stats:update',
   'pet:say',
+  'pet:recall',
   'pet:character',
   'pet:mode',
   'pet:walk',

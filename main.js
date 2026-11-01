@@ -964,29 +964,56 @@ function enforcePetBounds(why) {
   return true;
 }
 
-/** 把宠物叫回主屏底部中央（托盘菜单 / Ctrl+Alt+R） */
+/* ------------------------------------------------------------------ *
+ * 叫回宠物（托盘菜单 / 宠物右键 / Ctrl+Alt+R）
+ *
+ * 旧实现会让用户觉得「怎么叫都叫不回来」，两个根因：
+ *  1) 开着摄像头镜像时 pet:follow 每帧（~30fps）直接 setPosition，把叫回的
+ *     结果立刻覆盖掉，宠物又跑回手的位置；
+ *  2) 叫回走 walkTo 动画（0.5~2.8s），途中被跟随 / 巡检 / 拖拽任意一次
+ *     定位打断就永远走不到；宠物在屏幕外时更会「越走越看不见」。
+ * 现在：清状态 → 强制显示置顶 → 瞬移到「鼠标所在屏」中央偏下 → 短暂
+ * 压制手势跟随，让宠物稳稳停在面前。
+ * ------------------------------------------------------------------ */
+let recallHoldUntil = 0;   // 该时间戳之前忽略 pet:follow，避免刚叫回就被拽走
+
 function recallPet() {
   if (!petWin || petWin.isDestroyed()) return;
-  // 残留拖拽态（renderer 丢了 mouseup）会挡住 walkTo —— 先清掉，否则「快捷键叫不回来」
+
+  // 1) 清掉一切会抢窗口位置的状态（残留 dragState 会把宠物黏在光标上）
   if (dragState) stopPetDrag();
-  const { workArea } = screen.getPrimaryDisplay();
-  const tx = Math.round(workArea.x + (workArea.width - PET_W) / 2);
-  const ty = Math.round(workArea.y + workArea.height - PET_H - 12);
-  if (!petVisible) setPetVisible(true);
   stopWander(true);
+  if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
+  walking = false;
+  sendPet('pet:walk', { on: false });
+
+  // 2) 目标：鼠标当前所在的那块屏（多屏时别把宠物叫到另一块屏去）
+  let d = screen.getPrimaryDisplay();
+  try { d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()); } catch (_) {}
+  const a = d.workArea;
+  const tx = Math.round(a.x + (a.width - PET_W) / 2);
+  const ty = Math.round(a.y + a.height - PET_H - 24);
+  const c = clampToNearestWorkArea(tx, ty);
+
+  // 3) 强制可见 + 置顶 + 恢复鼠标可交互（穿透状态下连右键都点不到）
+  petVisible = true;
+  try { petWin.setIgnoreMouseEvents(false); } catch (_) {}
   petWin.showInactive();
   petWin.setAlwaysOnTop(true, 'screen-saver');
-  // 已经在屏幕外就「瞬移」回安全位（动画途中同样在屏幕外，越走越看不见）
-  if (!petFullyInside()) {
-    petSetPos(tx, ty, false);
-    config.petPos = { x: tx, y: ty };
-    saveConfig();
-    sendPet('pet:say', { text: '我在这儿呢~', ms: 3000 });
-    scheduleWander(4000);
-    return;
-  }
-  walkTo(tx, ty, () => scheduleWander(4000));
+  try { petWin.moveTop(); } catch (_) {}
+
+  // 4) 瞬移，不走动画（避免途中被任何一次定位打断）
+  petSetPos(c.x, c.y, false);
+  config.petPos = { x: c.x, y: c.y };
+  saveConfig();
+
+  // 5) 压制手势跟随 10 秒：宠物稳稳停在面前，不再被手的位置拽走
+  recallHoldUntil = Date.now() + 10000;
+
   sendPet('pet:say', { text: '我在这儿呢~', ms: 3000 });
+  sendPet('pet:recall', {});
+  refreshTray();
+  scheduleWander(10000);
 }
 
 function startPetWatchdog() {
@@ -2611,6 +2638,9 @@ function registerIpc() {
    */
   ipcMain.on('pet:follow', (_e, p) => {
     if (!petWin || petWin.isDestroyed()) return;
+    // 叫回后的暂停期：别让手势跟随把刚叫回来的宠物又拽走
+    // （否则 Ctrl+Alt+R / 右键点「叫回眼前」看起来完全没反应）
+    if (Date.now() < recallHoldUntil) return;
     const nx0 = (p && p.x) || 0, ny0 = (p && p.y) || 0;
     const b = petWin.getBounds();
     const d = screen.getDisplayNearestPoint({ x: Math.round(b.x + PET_W / 2), y: Math.round(b.y + PET_H / 2) });
@@ -2666,8 +2696,18 @@ function registerIpc() {
   });
 
   ipcMain.on('pet:menu', () => {
-    if (!tray) return;
-    tray.popUpContextMenu();
+    // 宠物身上右键：弹独立小菜单，明确带「叫回眼前」。
+    // 不再依赖 tray.popUpContextMenu()（托盘图标异常时整个菜单都弹不出来，
+    // 用户就会觉得「右键也不可以」）。
+    const m = Menu.buildFromTemplate([
+      { label: '🔎 把宠物叫回眼前', click: recallPet },
+      { type: 'separator' },
+      { label: '💬 和我聊聊（AI）', click: openAI },
+      { label: '⚙️ 设置', click: () => openSettings() },
+      { type: 'separator' },
+      { label: petVisible ? '隐藏 Mochi' : '显示 Mochi', click: togglePet }
+    ]);
+    m.popup();
   });
 
   ipcMain.on('pet:hi', () => {
@@ -3127,8 +3167,12 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.register('Control+Alt+P', togglePiano);
     globalShortcut.register('Control+Alt+C', cycleCharacter);
     globalShortcut.register('Control+Alt+S', openSettings);
-    // 宠物走出屏幕/找不到了，一键叫回来
-    globalShortcut.register('Control+Alt+R', recallPet);
+    // 宠物走出屏幕/找不到了，一键叫回来。
+    // register 返回 false = 被其它程序占用（以前静默失败，用户完全不知道为什么按了没反应）
+    if (!globalShortcut.register('Control+Alt+R', recallPet)) {
+      diag('Ctrl+Alt+R 注册失败（可能被其它程序占用），启用备用 Ctrl+Alt+Shift+R');
+      globalShortcut.register('Control+Alt+Shift+R', recallPet);
+    }
     // AI 对话窗口
     globalShortcut.register('Control+Alt+A', openAI);
 

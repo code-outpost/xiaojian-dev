@@ -509,6 +509,14 @@
 
     api.on('pet:say', ({ text, ms }) => say(text, ms || 4200));
 
+    // 叫回成功：给个一眼能看见的反馈（跳一下 + 冒颗心），
+    // 免得用户分不清「没叫回来」还是「叫回来了但没注意」
+    api.on('pet:recall', () => {
+      setOverride('happy', 1200);
+      emitHearts(1);
+      if (live) { live.action('jump'); live.impulse('excited', 0.6); }
+    });
+
     api.on('pet:hi', () => {
       setOverride(char.handClick ? 'happy' : 'clicking', 1500);
       sayRandom(char.greet || char.idle, 4200);

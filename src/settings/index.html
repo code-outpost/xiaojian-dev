@@ -546,7 +546,7 @@
               <div class="hs"><i>2</i><div><b>选一个角色</b><p>「角色选择」里有内置形象，也能上传自己的图片做专属形象（至少传一张「待机」图）。</p></div></div>
               <div class="hs"><i>3</i><div><b>开提醒</b><p>「提醒设置」里配喝水、起身、番茄钟和上下班打卡。到点它会举牌 + 冒气泡，不会弹系统窗口打断你。</p></div></div>
               <div class="hs"><i>4</i><div><b>填城市看天气</b><p>「天气」里输入城市名点查询，选中的城市会存下来。之后下雨、降温、大风都会提前提醒。</p></div></div>
-              <div class="hs"><i>5</i><div><b>找不到它就喊回来</b><p>托盘右键 →「把宠物叫回眼前」，或者按 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd>。</p></div></div>
+              <div class="hs"><i>5</i><div><b>找不到它就喊回来</b><p>按 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd>、托盘右键，或在宠物身上右键 →「把宠物叫回眼前」。它会立刻瞬移到鼠标所在屏幕的下方中央并跳一下，同时暂时停下手势跟随，稳稳待在面前。</p></div></div>
             </div>
           </div>
 
@@ -556,6 +556,7 @@
               <div class="krow"><span>打开设置</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>S</kbd></div>
               <div class="krow"><span>AI 对话</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>A</kbd></div>
               <div class="krow"><span>叫回宠物</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd></div>
+              <div class="krow"><span>叫回宠物（备用键*）</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>R</kbd></div>
               <div class="krow"><span>切换角色</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>C</kbd></div>
               <div class="krow"><span>钢琴</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>P</kbd></div>
             </div>
@@ -567,7 +568,10 @@
               <p>先确认打开的是新版：托盘右键 → 退出，再重新打开。如果角色卡上有红色「缺图片」，说明这个形象没有可用图片，点「上传图片」补一张即可。</p>
             </details>
             <details class="faq"><summary>宠物不见了 / 跑出屏幕？</summary>
-              <p>现在每 4 秒会自动检查一次：只要身体有任何一部分超出桌面可用区域（比如压到任务栏后面），就会立刻被收回视野内，不会再「只露个头顶」。想主动找回它，按 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd> 或托盘右键「把宠物叫回眼前」。</p>
+              <p>现在每 4 秒会自动检查一次：只要身体有任何一部分超出桌面可用区域（比如压到任务栏后面），就会立刻被收回视野内，不会再「只露个头顶」。想主动找回它，按 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd>、托盘右键，或在宠物身上右键 →「把宠物叫回眼前」。</p>
+            </details>
+            <details class="faq"><summary>按了叫回没反应 / 一叫回去又跑掉？</summary>
+              <p>开着「摄像头镜像」时，宠物原本会每帧跟着手跑，把叫回的结果立刻盖掉。现已修复：叫回会<b>瞬移</b>到鼠标所在屏幕下方中央、跳一下，并<b>暂停手势跟随 10 秒</b>，稳稳待在面前，之后再自动恢复。<br/>若 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd> 被其它软件占用，程序会自动改用备用键 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>R</kbd>（带 * 的那行）；托盘或宠物右键菜单里的「把宠物叫回眼前」始终可用。</p>
             </details>
             <details class="faq"><summary>提醒没有响？</summary>
               <p>检查「提醒设置」里对应的开关是否打开；喝水/起身是按间隔循环的，番茄钟和打卡是按时间点。也可以点「试一次」验证。</p>
