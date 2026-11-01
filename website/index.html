@@ -72,7 +72,8 @@
   .chars-note{margin-top:18px;text-align:center;font-size:13px;color:var(--ink-3);line-height:1.7}
   /* 下载 */
   .download{background:linear-gradient(160deg,#FFF0F5,#FFE3EC);border-radius:26px;padding:42px;text-align:center}
-  .download h2{font-size:26px;font-weight:900}
+  .download h2{font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .ver-pill{background:var(--pink);color:#fff;font-size:14px;font-weight:800;padding:4px 14px;border-radius:999px;letter-spacing:.3px;box-shadow:0 6px 16px rgba(242,84,138,.3)}
   .dl-btns{margin-top:24px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
   .dl-note{margin-top:16px;font-size:13px;color:var(--ink-3)}
   .dl-note code{background:#fff;padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
@@ -211,9 +212,12 @@
       <div class="log-body">
         <div class="log-date">2026-11-01</div>
         <ul>
-          <li>🤚 <b>摄像头手势镜像升级</b>：手左右挥，宠物跟着镜像倾斜 + 摆动；把手推近 → 宠物放大，拉远 → 缩小（景深玩法）</li>
-          <li>🎭 多种手势动作：握拳跳、张开挥手、食指指向、比心，换手势才触发一次</li>
-          <li>⚡ 启动优化：摄像头窗口与协议改为首次需要时懒加载，打开速度明显变快</li>
+          <li>🤚 <b>摄像头手势镜像升级</b>：手左右挥，宠物跟着镜像倾斜 + 轻微摆动；把手推近 → 宠物放大，拉远 → 缩小（景深玩法）</li>
+          <li>🎭 多种手势动作：握拳跳、张开挥手、食指指向、比心，按手势切换触发</li>
+          <li>🪟 <b>跟随不再越界</b>：手势满屏跟随时，宠物窗口始终完整留在屏幕可用区内，不压任务栏、不跑出屏幕，也能自然跨屏跟随</li>
+          <li>⚡ 启动优化：摄像头窗口与自定义协议改为首次需要时懒加载，软件打开明显变快</li>
+          <li>🔄 <b>更新方式调整</b>：软件内不再自动更新；「检查更新」与「关于」页一键打开官网下载覆盖安装。同时修好"检查更新反复报错"的弹窗问题</li>
+          <li>🌐 官网新增「更新日志」区块，下载说明同步改为引导到官网</li>
           <li>🐞 修好活体宠物空白、摄像头不生效、设置页点不动等问题</li>
         </ul>
       </div>
@@ -251,8 +255,8 @@
 
 <section id="download" class="wrap">
   <div class="download">
-    <h2>免费下载 Mochi</h2>
-    <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 可到官网 / 设置里获取最新版</p>
+    <h2>免费下载 Mochi <span class="ver-pill">v1.0.3</span></h2>
+    <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 当前最新稳定版</p>
     <div class="dl-btns">
       <a class="btn btn-primary" href="#" data-dl="setup">⬇ 安装版（推荐）</a>
       <a class="btn btn-ghost" href="#" data-dl="portable">📦 便携单文件版</a>
