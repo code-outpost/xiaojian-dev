@@ -1,8 +1,15 @@
 'use strict';
 /**
- * 活体引擎 · 主控制器
- * 把「情绪目标 + 自发/指定动作 + 摄像头手势」三路输入融合，每帧平滑插值后交给骨架渲染。
- * 这是把静态立绘变成「会呼吸、会眨眼、有情绪、随你手而动」的活物的总装车间。
+ * 活体引擎 · 原立绘驱动（puppet）
+ *
+ * 设计原则：**绝不重画形象**。
+ * 之前那版用程序化 SVG 骨骼「重新捏」了一只，结果和大家熟悉的立绘完全不像，还被吐槽难看。
+ * 现在改成：把原来的两层 <img class="layer"> 包进一个容器，只对它做整体变换
+ * （位移 / 旋转 / 挤压拉伸），于是「形象还是原来那个，只不过活了」。
+ *
+ * 情绪（PAD）→ 呼吸、摇晃、倾斜、弹跳；
+ * 动作（挥手/欢呼/跳跃/跳舞…）→ 身体级的小表演；
+ * 摄像头手势 → 整只宠物跟着你的手左右移动、跟着抬手上下起伏、跟着倾斜。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -10,38 +17,34 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  // 注意：此处不能用外层 IIFE 的形参 root（不在 factory 闭包内），浏览器里取全局 self
+  // ⚠️ 不能用外层 IIFE 的形参 root（不在 factory 闭包内），浏览器里取全局 self
   const G = (typeof self !== 'undefined' ? self : globalThis);
-  const M = (typeof require !== 'undefined')
-    ? require('./math.js') : G.LiveMath;
+  const M = (typeof require !== 'undefined') ? require('./math.js') : G.LiveMath;
   const Emotion = (typeof require !== 'undefined') ? require('./emotion.js') : G.LiveEmotion;
-  const { ACTIONS, IdleScheduler } = (typeof require !== 'undefined') ? require('./actions.js') : G.LiveActions;
-  const Skeleton = (typeof require !== 'undefined') ? require('./skeleton.js') : G.LiveSkeleton;
-  const Rigs = (typeof require !== 'undefined') ? require('./rigs.js') : G.LiveRigs;
-  const { clamp, lerp, damp, dampAngle, osc } = M;
+  const A = (typeof require !== 'undefined') ? require('./actions.js') : G.LiveActions;
+  const { ACTIONS, DEFAULT_DUR, IdleScheduler } = A;
+  const { clamp, lerp, damp, osc } = M;
+
+  const PI = Math.PI;
+  const sin = Math.sin, abs = Math.abs;
 
   function LivePet(container, char) {
+    if (!container) throw new Error('活体引擎缺少容器');
+
+    // ---- 先做校验，别在动过 DOM 之后再抛 ----
+    const layers = Array.from(container.querySelectorAll('.layer'));
+    if (!layers.length) throw new Error('没有找到立绘层（.layer），活体模式不适用');
+
     this.container = container;
     this.char = char;
-    const rig = Rigs.rig(char.id);
-    this.rig = rig;
+    this.layers = layers;
 
-    // 注入 SVG
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'live-svg');
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    svg.style.position = 'absolute';
-    svg.style.inset = '0';
-    svg.style.overflow = 'visible';
-    container.insertBefore(svg, container.firstChild);
-
-    // 先建骨架：只有骨架成功构建后才隐藏旧立绘，避免中途抛错导致整只空白
-    this.skeleton = new Skeleton(svg, rig, {
-      body: char.color, deep: char.colorDeep, soft: char.colorSoft
-    });
-    const lay = container.querySelectorAll('.layer');
-    lay.forEach(l => { l.style.display = 'none' });
+    // 只包一层，不动 <img> 的 src/class —— 状态切换与淡入淡出全部照旧
+    const body = document.createElement('div');
+    body.className = 'live-body';
+    container.insertBefore(body, container.firstChild);
+    layers.forEach(l => body.appendChild(l));
+    this.body = body;
 
     this.emotion = new Emotion();
     this.scheduler = new IdleScheduler();
@@ -52,30 +55,41 @@
 
     // 摄像头手势
     this.cameraMirror = false;
-    this.hand = null;          // 最近一次手势 {present,...}
-    this.handStamp = 0;
+    this.hand = null;
+    this.handStamp = -99;
+    this.handMix = 0;          // 手势权重 0..1（有手时淡入，离开时淡出）
+    this._hx = 0; this._hy = 0; // 上一帧手掌归一化位置，用于放大「小幅移动」
+
+    // 全屏跟随（摄像头镜像开启时，宠物窗口跟随手在整屏范围移动）
+    this.followScreen = false;
+    this.fx = 0; this.fy = 0;     // 阻尼后的归一化跟随坐标（[-1,1]）
+    this.lastPose = null;         // 上一帧手势姿态，用于边沿触发动作
+    this.followCb = null;         // 主进程定位回调：followCb(mirrorX, palmY)
+
+    // 手势动态镜像：手横扫/上下挥 → 身体跟着倾/摆（像在跟你一起挥手）
+    this._hxRaw = 0; this._hyRaw = 0;   // 上一帧手掌原始归一化位置（未钳制）
+    this.handVelX = 0; this.handVelY = 0; // 平滑后的手部速度（用于挥手镜像）
+    // 景深（push/pull）：手离摄像头越近 size 越大 → 宠物越大
+    this._size = 0.2;             // 平滑后的手掌尺度
+    this._handLive = false;       // 上一帧是否检测到手（用于消除「手刚出现」的速度毛刺）
 
     // 状态
     this.walking = false;
     this.dragging = false;
+    this.sleeping = false;
 
-    // 平滑态
-    this.s = {
-      lean: 0, bob: 0, sway: 0, headTilt: 0, spin: 0,
-      eyeOpen: 0.9, mouthCurve: 0.2, mouthOpen: 0, brow: -0.2, blush: 0, glow: 0,
-      breath: 1, tailWag: 0,
-      armL: { sh: -14, el: 14, open: 0.6 }, armR: { sh: 14, el: 14, open: 0.6 },
-      legL: { sh: 0, el: 0 }, legR: { sh: 0, el: 0 }, gazeX: 0, gazeY: 0, wink: null
-    };
+    // 平滑后的最终形变量（全部为有限数值）
+    this.s = { x: 0, y: 0, rot: 0, sx: 1, sy: 1, breath: 1, bob: 0 };
 
-    // 眨眼调度
-    this.nextBlink = 2 + Math.random() * 3;
-    this.blinkT = 0;
+    this.body.style.transformOrigin = '50% 92%';
+    this.body.style.willChange = 'transform';
+    this._apply();
 
-    // 举牌提示（提醒用）
     this.signEl = null;
+    this._signText = '';
   }
 
+  /* ---------------- 主循环 ---------------- */
   LivePet.prototype.start = function () {
     if (this.running) return;
     this.running = true;
@@ -84,37 +98,100 @@
       if (!this.running) return;
       const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
       this.last = now;
-      this.frame(dt);
+      try {
+        this.frame(dt);
+      } catch (e) {
+        // 单帧出错不能让整只宠物消失：停掉引擎并让 pet.js 回退
+        console.error('[mochi] 活体引擎单帧异常，已停止：', e);
+        this.destroy();
+        return;
+      }
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
   };
 
-  LivePet.prototype.stop = function () { this.running = false; if (this.raf) cancelAnimationFrame(this.raf); };
+  LivePet.prototype.stop = function () {
+    this.running = false;
+    if (this.raf) { try { cancelAnimationFrame(this.raf); } catch (_) {} this.raf = 0; }
+  };
+
   LivePet.prototype.destroy = function () {
     this.stop();
     if (this.signEl && this.signEl.parentNode) this.signEl.parentNode.removeChild(this.signEl);
-    const svg = this.container.querySelector('.live-svg');
-    if (svg && svg.parentNode) svg.parentNode.removeChild(svg);
-    // 恢复旧立绘两层 img 的可见性（退回静态立绘时不再被隐藏）
-    this.container.querySelectorAll('.layer').forEach(l => { l.style.display = ''; });
+    this.signEl = null;
+    // 把立绘放回原位，保证退回静态模式时结构完全复原
+    try {
+      if (this.body) {
+        // 反向插到最前面，最终顺序仍是 layerA, layerB, .zzz, .hearts
+        this.layers.slice().reverse().forEach(l => {
+          if (l && this.body.contains(l)) this.container.insertBefore(l, this.container.firstChild);
+        });
+        this.body.style.transform = '';
+        if (this.body.parentNode) this.body.parentNode.removeChild(this.body);
+      }
+    } catch (_) { /* ignore */ }
+    this.body = null;
   };
 
-  /* ---------------- 外部接口 ---------------- */
+  /* ---------------- 外部接口（保持与旧引擎一致） ---------------- */
   LivePet.prototype.setStats = function (st) { this.emotion.setStats(st); };
   LivePet.prototype.impulse = function (name, amt) { this.emotion.impulse(name, amt); };
-  LivePet.prototype.setSleeping = function (on) { this.emotion.setSleeping(on); };
+  LivePet.prototype.setSleeping = function (on) { this.sleeping = !!on; this.emotion.setSleeping(!!on); };
   LivePet.prototype.setWalking = function (on) { this.walking = !!on; if (on) this.scheduler.force('walk', 0.6); };
   LivePet.prototype.setDragging = function (on) { this.dragging = !!on; };
   LivePet.prototype.action = function (name, dur) {
-    if (name === 'holdSign') { this.showSign(this._signText || ''); }
+    if (name === 'holdSign') this.showSign(this._signText || '');
     else this.hideSign();
-    this.scheduler.force(name, dur);
+    if (ACTIONS[name]) this.scheduler.force(name, dur);
   };
   LivePet.prototype.setSign = function (text) { this._signText = text || ''; };
   LivePet.prototype.clearAction = function () { this.scheduler.clear(); this.hideSign(); };
-  LivePet.prototype.setCameraMirror = function (on) { this.cameraMirror = !!on; if (!on) this.hand = null; };
-  LivePet.prototype.reactToHand = function (h) { this.hand = h; this.handStamp = this.t; };
+  LivePet.prototype.setCameraMirror = function (on) {
+    this.cameraMirror = !!on;
+    this.followScreen = !!on;   // 镜像开启 = 宠物满屏跟随手
+    if (!on) { this.hand = null; this.handMix = 0; this.lastPose = null; }
+  };
+  LivePet.prototype.reactToHand = function (h) {
+    const wasOn = !!(this.hand && this.hand.present) && (this.t - this.handStamp) <= 0.45;
+    this.hand = h;
+    this.handStamp = this.t;
+    // 手刚进入画面的那一帧给个「打招呼」冲量，让「它看见你了」这件事一眼能看出来
+    if (!wasOn && h && h.present && this.cameraMirror) {
+      this.emotion.impulse('greet', 1.0);
+      this.emotion.impulse('excited', 0.35);
+    }
+    // 手势姿态切换 → 触发对应动作（边沿触发，避免每帧重复触发）
+    const pose = this._poseOf(h);
+    if (pose && pose !== this.lastPose) {
+      this.lastPose = pose;
+      this._triggerPose(pose);
+    } else if (!pose) {
+      this.lastPose = null;
+    }
+  };
+
+  /** 由手势语义判断当前「姿态」——用于挑选要表演的动作 */
+  LivePet.prototype._poseOf = function (h) {
+    if (!h || !h.present) return null;
+    if (h.pinch) return 'pinch';                       // 拇指-食指捏合 = 比心
+    if (h.pointing) return 'point';                    // 食指伸出 = 指向
+    const o = (h.openness != null) ? h.openness : 0.5;
+    if (o > 0.72) return 'open';                       // 五指张开 = 挥手
+    if (o < 0.28) return 'fist';                       // 握拳 = 跳
+    return 'flat';                                     // 中性手势 = 只跟随不表演
+  };
+
+  /** 不同姿态触发不同动作，让「多种动作」看得见 */
+  LivePet.prototype._triggerPose = function (pose) {
+    switch (pose) {
+      case 'fist':  this.action('jump');  this.impulse('excited', 0.5); break;
+      case 'open':  this.action('wave');  this.impulse('happy', 0.4);   break;
+      case 'point': this.action('point'); break;
+      case 'pinch': this.action('heart'); this.impulse('petting', 0.5); break;
+      default: break;
+    }
+  };
 
   /* ---------------- 每帧 ---------------- */
   LivePet.prototype.frame = function (dt) {
@@ -123,110 +200,159 @@
 
     // 自发 / 指定动作
     const act = this.scheduler.update(dt, emo);
-    let ov = {};
-    if (act && ACTIONS[act.name]) ov = ACTIONS[act.name](act.t / act.dur, {}) || {};
+    const ov = (act && ACTIONS[act.name])
+      ? (ACTIONS[act.name](clamp(act.t / act.dur, 0, 1), {}) || {})
+      : {};
 
-    // 手势镜像：覆盖一侧手臂
-    let gestureArm = null;
-    if (this.cameraMirror && this.hand && this.hand.present && (this.t - this.handStamp) < 0.4) {
-      gestureArm = this.applyHandPose(ov);
+    // 情绪基底：呼吸起伏 / 摇晃 / 倾斜
+    const asleep = this.sleeping || emo.asleep;
+    const breathAmp = asleep ? 0.012 : 0.022;
+    const breath = 1 + osc(this.t, Math.max(0.35, emo.bobFreq * 0.5)) * breathAmp;
+    const bobFreq = asleep ? 0.4 : emo.bobFreq;
+    const bobAmp = asleep ? 0.8 : emo.bobAmp;
+    const walkBob = this.walking ? abs(osc(this.t, 3.2)) * 5 : 0;
+
+    let x = emo.swayAmp * osc(this.t, emo.swayFreq, 0.3) * 0.5;
+    let y = -bobAmp * osc(this.t, bobFreq) * 0.45 - walkBob + (asleep ? 5 : 0);
+    let rot = emo.lean * 0.42 + (this.dragging ? -3 : 0);
+    let sx = 1, sy = breath;
+
+    // 动作叠加
+    if (ov.x) x += ov.x;
+    if (ov.y) y += ov.y;
+    if (ov.rot) rot += ov.rot;
+    if (ov.sx) sx *= ov.sx;
+    if (ov.sy) sy *= ov.sy;
+
+    // ---- 摄像头手势：整只跟着你的手走 ----
+    const h = this.handTarget();
+    const wantMix = h ? 1 : 0;
+    this.handMix = damp(this.handMix, wantMix, 6, dt);
+    if (h && this.handMix > 0.001) {
+      const k = this.handMix;
+      x = lerp(x, h.x, k);
+      y = lerp(y, h.y, k);
+      rot = lerp(rot, h.rot, k);
+      sx = lerp(sx, h.sx, k);
+      sy = lerp(sy, h.sy, k);
     }
 
-    // ---- 目标姿态 ----
-    const tgt = {
-      lean: emo.lean + (ov.rot || 0) + (this.dragging ? -4 : 0),
-      bob: emo.bobAmp * osc(this.t, emo.bobFreq) + (ov.bob || 0) + (this.walking ? Math.abs(osc(this.t, 3)) * 4 : 0),
-      sway: emo.swayAmp * osc(this.t, emo.swayFreq, 0.3) + (ov.swayAdd || 0),
-      spin: ov.spin || 0,
-      headTilt: (emo.a > 0.3 ? osc(this.t, 0.7) * 2 : 0) + (ov.headTilt || 0),
-      mouthCurve: ov.mouthCurve != null ? ov.mouthCurve : emo.mouthCurve,
-      mouthOpen: ov.mouthOpen != null ? ov.mouthOpen : (emo.a > 0.6 ? 0.12 : 0),
-      brow: ov.brow != null ? ov.brow : emo.brow,
-      blush: emo.blush,
-      glow: emo.glow,
-      breath: 1 + osc(this.t, emo.bobFreq * 0.5) * 0.022 + ((ov.breath || 1) - 1),
-      tailWag: emo.tailWag * osc(this.t, 6) * 16,
-      gazeX: this.hand && this.hand.present ? clamp(this.hand.palmX, -1, 1) : (this.walking ? 0 : osc(this.t, 0.2) * 0.3),
-      wink: ov.wink || null
-    };
-
-    // 手臂：先放休息姿态，再被动作覆盖，再被手势覆盖
-    const spread = emo.armSpread;
-    let armL = ov.armL || { sh: -12 - spread * 12, el: 14, open: 0.55 + spread * 0.2 };
-    let armR = ov.armR || { sh: 12 + spread * 12, el: 14, open: 0.55 + spread * 0.2 };
-    if (gestureArm) { if (gestureArm.side === 'L') armL = gestureArm.pose; else armR = gestureArm.pose; }
-    if (ov.legsL) tgt.legL = ov.legsL; if (ov.legsR) tgt.legR = ov.legsR;
-    tgt.armL = armL; tgt.armR = armR;
-
-    // 腿休息
-    tgt.legL = tgt.legL || { sh: 0, el: this.walking ? 18 + Math.abs(osc(this.t, 6)) * 16 : 0 };
-    tgt.legR = tgt.legR || { sh: 0, el: this.walking ? 18 + Math.abs(osc(this.t + 0.5, 6)) * 16 : 0 };
-
-    // 眨眼
-    this.nextBlink -= dt;
-    if (this.nextBlink <= 0 && this.blinkT === 0) { this.blinkT = 0.001; this.nextBlink = 2.5 + Math.random() * 4; }
-    let eyeOpen = emo.eyeOpen;
-    if (this.blinkT > 0) {
-      this.blinkT += dt;
-      const bt = this.blinkT / 0.14;
-      if (bt >= 1) this.blinkT = 0;
-      else eyeOpen = emo.eyeOpen * (1 - Math.sin(bt * Math.PI));
+    // ---- 全屏跟随：把手位置交给主进程移动宠物窗口（满屏范围）----
+    if (this.followScreen) {
+      const f = this.followTarget();
+      if (f && this.followCb) this.followCb(f.x, f.y);
     }
-    tgt.eyeOpen = clamp(eyeOpen, 0.05, 1);
 
-    // ---- 阻尼插值后写骨架 ----
-    const s = this.s, L = 9;
-    s.lean = dampAngle(s.lean, tgt.lean, L, dt);
-    s.bob = damp(s.bob, tgt.bob, L, dt);
-    s.sway = dampAngle(s.sway, tgt.sway, L, dt);
-    s.spin = dampAngle(s.spin, tgt.spin, L, dt);
-    s.headTilt = dampAngle(s.headTilt, tgt.headTilt, L, dt);
-    s.eyeOpen = damp(s.eyeOpen, tgt.eyeOpen, 14, dt);
-    s.mouthCurve = damp(s.mouthCurve, tgt.mouthCurve, 10, dt);
-    s.mouthOpen = damp(s.mouthOpen, tgt.mouthOpen, 12, dt);
-    s.brow = damp(s.brow, tgt.brow, 8, dt);
-    s.blush = damp(s.blush, tgt.blush, 6, dt);
-    s.glow = damp(s.glow, tgt.glow, 5, dt);
-    s.breath = damp(s.breath, tgt.breath, 8, dt);
-    s.tailWag = damp(s.tailWag, tgt.tailWag, 10, dt);
-    s.gazeX = damp(s.gazeX, tgt.gazeX, 6, dt);
-    s.wink = tgt.wink;
+    // ---- 平滑（阻尼，让动作有惯性而不是硬跳）----
+    const s = this.s, L = 11;
+    s.x = damp(s.x, x, L, dt);
+    s.y = damp(s.y, y, L, dt);
+    s.rot = damp(s.rot, rot, L, dt);
+    // 放宽到 0.5..1.7，给「推进/拉远」景深缩放留出空间（手很近时宠物可放大到 1.6 倍）
+    s.sx = damp(s.sx, clamp(sx, 0.5, 1.7), L, dt);
+    s.sy = damp(s.sy, clamp(sy, 0.5, 1.7), L, dt);
+    s.breath = breath;
+    s.bob = bobAmp;
 
-    this.smoothArm(s.armL, tgt.armL, dt);
-    this.smoothArm(s.armR, tgt.armR, dt);
-    this.smoothArm(s.legL, tgt.legL, dt);
-    this.smoothArm(s.legR, tgt.legR, dt);
+    this._apply();
 
-    const pose = {
-      lean: s.lean + s.spin, bob: s.bob, sway: s.sway, headTilt: s.headTilt,
-      eyeOpen: s.eyeOpen, mouthCurve: s.mouthCurve, mouthOpen: s.mouthOpen, brow: s.brow,
-      blush: s.blush, glow: s.glow, breath: s.breath, tailWag: s.tailWag,
-      gazeX: s.gazeX, wink: s.wink,
-      armL: s.armL, armR: s.armR, legs: { L: s.legL, R: s.legR }
-    };
-    this.skeleton.pose(pose);
-
-    // 举牌位置跟随（若显示）
     if (this.signEl && this.signEl.style.display !== 'none') this.positionSign();
   };
 
-  LivePet.prototype.smoothArm = function (cur, tgt, dt) {
-    cur.sh = dampAngle(cur.sh, tgt.sh || 0, 11, dt);
-    cur.el = dampAngle(cur.el, tgt.el || 0, 11, dt);
-    cur.open = damp(cur.open != null ? cur.open : 0.6, tgt.open != null ? tgt.open : 0.6, 11, dt);
+  /** 把手势映射成整体形变目标；没有手 / 关闭镜像 / 手已离开时返回 null */
+  LivePet.prototype.handTarget = function () {
+    if (!this.cameraMirror) return null;
+    const h = this.hand;
+    if (!h || !h.present) {
+      this._hx = 0; this._hy = 0; this._hxRaw = 0; this._hyRaw = 0;
+      this._handLive = false;
+      return null;
+    }
+    if ((this.t - this.handStamp) > 0.6) {
+      this._hx = 0; this._hy = 0; this._hxRaw = 0; this._hyRaw = 0;
+      this._handLive = false;
+      return null;
+    }
+
+    const hx = clamp(h.palmX || 0, -1, 1);
+    const hy = clamp(h.palmY || 0, -1, 1);               // +1 = 手举高
+    const mx = hx;                                        // 水平方向保持原约定（窗口/身体一致）
+    const open = clamp(h.openness != null ? h.openness : 0.5, 0, 1);
+
+    // 手「刚出现」这一帧：把速度基线直接对齐到当前位置，避免从上一只手/无手状态
+    // 跳变过来产生一帧误判的挥手倾斜（真实场景手是连续移动的，不会瞬移）。
+    if (!this._handLive) { this._hxRaw = hx; this._hyRaw = hy; this._handLive = true; }
+
+    // 手势动态镜像：手横扫/上下挥 → 身体跟着倾/摆（像在跟你一起挥手）
+    // 手静止时速度为 0 → 不产生额外摆动，只有「在动」时才摆，自然得像在回应你。
+    const rawVx = hx - this._hxRaw;
+    const rawVy = hy - this._hyRaw;
+    this._hxRaw = hx; this._hyRaw = hy;
+    this.handVelX = this.handVelX * 0.6 + rawVx * 0.4;    // 指数平滑，保留挥手节奏
+    this.handVelY = this.handVelY * 0.6 + rawVy * 0.4;
+
+    // 手部移动速度：把小幅、快速的动作也放大，让它「跟手」更灵敏（高敏感）。
+    // ⚠️ 速度项要钳制：手突然跳变（快速挥手/测试直跳）时若用原始 delta 会爆冲甚至方向反转，
+    // 钳到 ±0.18 既能放大小幅动作，又不会抖。
+    const vx = clamp(hx - this._hx, -0.18, 0.18);
+    const vy = clamp(hy - this._hy, -0.18, 0.18);
+    this._hx = hx; this._hy = hy;
+    const move = clamp(Math.hypot(vx, vy) * 5, 0, 1);
+
+    const po = h.pointing ? 1 : 0;
+    const pi = h.pinch ? 1 : 0;
+
+    // 全屏跟随开启时，窗口已经在大范围移动，身体只保留「朝手方向的轻微倾斜 + 察觉到你的放大」，
+    // 不再做大幅平移（否则窗口和身体的位移会叠加成双倍位移，显得很乱）。
+    const LEAN = this.followScreen ? 0.35 : 1;
+    const PERK = this.followScreen ? 0.06 : 0.10;
+
+    // 挥手镜像：手横扫 → 身体左右倾 + 轻微横摆；手上下挥 → 上下摆。
+    const waveRot = clamp(this.handVelX * 240 * LEAN, -30, 30);
+    const waveX = this.handVelX * 26 * LEAN;
+    const waveY = this.handVelY * 30 * LEAN;
+
+    const x = mx * 72 * LEAN + vx * 120 * LEAN + po * mx * 14 + waveX;
+    const y = -hy * 46 * LEAN + vy * 80 * LEAN + (open - 0.5) * -12 - PERK * 70 + waveY;
+    const rot = mx * 22 * LEAN + vx * 28 * LEAN + po * (mx >= 0 ? 6 : -6) + waveRot;
+    let sy = 1 + hy * 0.14 + (open - 0.5) * 0.18 + move * 0.08 + PERK - pi * 0.06;
+    let sx = 1 - hy * 0.08 + (open - 0.5) * 0.12 + move * 0.05 + PERK - pi * 0.05;
+
+    // 自定义玩法：手推进/拉远 → 宠物放大/缩小（push/pull 景深效果）
+    // 手越近 size 越大 → sizeK 越大 → 宠物越大（像凑近你）；手越远越小（像退远）。
+    this._size = this._size * 0.85 + (h.size != null ? h.size : 0.2) * 0.15;
+    const prox = clamp((this._size - 0.10) / 0.32, 0, 1);  // 0(远) .. 1(近)
+    const sizeK = 0.55 + prox * 1.05;                       // 0.55(远) .. 1.60(近)
+    sx *= sizeK; sy *= sizeK;
+
+    return { x, y, rot, sx, sy };
   };
 
-  /** 把用户手势映射成宠物一侧手臂姿态（镜像） */
-  LivePet.prototype.applyHandPose = function (ov) {
+  /**
+   * 全屏跟随：把手的归一化位置（镜像后的水平）映射成 [-1,1] 的整屏坐标，
+   * 经 followCb 交给主进程移动宠物窗口。手离开画面 / 关闭镜像时返回 null。
+   */
+  LivePet.prototype.followTarget = function () {
+    if (!this.followScreen || !this.cameraMirror) return null;
     const h = this.hand;
-    const side = h.palmX >= 0 ? 'R' : 'L'; // 屏幕同侧：你抬右手→宠物右侧臂抬起，像照镜子
-    // 抬手高度 → 肩角（hand 上为正）；指向 → 前臂前伸
-    const sh = 90 + clamp(h.palmY, -1, 1) * 85;
-    let el = 18 + (1 - (h.openness != null ? h.openness : 0.6)) * 35;
-    let open = h.openness != null ? h.openness : 0.7;
-    if (h.pointing) { el = 82; open = 0.15; }
-    if (h.pinch) { open = 0.1; }
-    return { side, pose: { sh, el, open } };
+    if (!h || !h.present) return null;
+    if ((this.t - this.handStamp) > 0.6) return null;
+    const hx = clamp(h.palmX || 0, -1, 1);
+    const hy = clamp(h.palmY || 0, -1, 1);
+    const mx = hx;  // 水平方向保持原约定（与本地身体平移一致）
+    // 阻尼，给一点惯性，避免抖动
+    this.fx = lerp(this.fx, mx, 0.2);
+    this.fy = lerp(this.fy, hy, 0.2);
+    return { x: this.fx, y: this.fy };
+  };
+
+  LivePet.prototype._apply = function () {
+    if (!this.body) return;
+    const s = this.s;
+    this.body.style.transform =
+      'translate3d(' + s.x.toFixed(2) + 'px,' + s.y.toFixed(2) + 'px,0)' +
+      ' rotate(' + s.rot.toFixed(2) + 'deg)' +
+      ' scale(' + s.sx.toFixed(4) + ',' + s.sy.toFixed(4) + ')';
   };
 
   /* ---------------- 举牌（提醒） ---------------- */
@@ -243,12 +369,10 @@
   };
   LivePet.prototype.hideSign = function () { if (this.signEl) this.signEl.style.display = 'none'; };
   LivePet.prototype.positionSign = function () {
-    // 举牌手在宠物一侧上方，牌随其放
-    const side = (this.hand && this.hand.present && this.cameraMirror) ? (this.hand.palmX >= 0 ? 'R' : 'L') : 'R';
-    const x = side === 'R' ? '62%' : '8%';
-    this.signEl.style.left = x;
+    this.signEl.style.left = '62%';
     this.signEl.style.top = '6%';
   };
 
+  LivePet.ACTIONS = ACTIONS;
   return LivePet;
 });

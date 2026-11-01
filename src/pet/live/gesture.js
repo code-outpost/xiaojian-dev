@@ -66,6 +66,9 @@
       wristAngle: ang,
       palmX,
       palmY,
+      // 手掌尺度（手腕→中指MCP 的归一化距离）：手离摄像头越近这个值越大，
+      // 与手指张合无关（只度量手掌本身的尺寸），用于「手推进/拉远」景深效果。
+      size: handScale,
       confidence: 1
     };
   }

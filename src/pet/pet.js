@@ -164,6 +164,8 @@
       petWrap.classList.add('living');
       live.setStats(cfg.stats);
       live.setCameraMirror(!!cfg.cameraMirror);
+      // 全屏跟随：把手位置交给主进程移动窗口；拖拽/按住时暂停，避免和手动拖动打架
+      live.followCb = (hx, hy) => { if (dragging || press) return; api.followHand(hx, hy); };
       live.start();
     } catch (e) {
       // 活体引擎异常时绝不连累整只宠物：清理并回退静态立绘
@@ -172,6 +174,14 @@
       live = null;
       petWrap.classList.remove('living');
       petWrap.querySelectorAll('.live-svg').forEach(el => el.remove());
+      // 把立绘从活体包裹层里放回去（构造中途抛错时 destroy 可能没跑）
+      const lb = petWrap.querySelector('.live-body');
+      if (lb) {
+        layers.slice().reverse().forEach(l => {
+          if (l && lb.contains(l)) petWrap.insertBefore(l, petWrap.firstChild);
+        });
+        lb.remove();
+      }
       layers.forEach(l => { l.style.display = ''; });
       visibleState = '';
       setSprite(computeState());

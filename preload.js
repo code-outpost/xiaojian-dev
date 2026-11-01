@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('mochi', {
   /* 宠物窗口 */
   petBounds: () => invoke('pet:get-bounds'),
   setPetPos: (x, y) => send('pet:set-pos', { x, y }),
+  // 摄像头手势全屏跟随：传入归一化手位置 [-1,1]（x 已镜像：+1=屏幕右，y +1=手举高=顶部）
+  followHand: (x, y) => send('pet:follow', { x: x || 0, y: y || 0 }),
   dragStart: () => send('pet:drag-start'),
   dragEnd: () => send('pet:drag-end'),
   setIgnoreMouse: ignore => send('pet:ignore-mouse', !!ignore),

@@ -938,28 +938,37 @@
   el.livingPet.addEventListener('change', () => patch({ livingPet: el.livingPet.checked }));
   el.cameraMirror.addEventListener('change', () => {
     const on = el.cameraMirror.checked;
-    patch({ cameraMirror: on });
+    // 手势镜像必须靠活体引擎才能表现出来：顺手把「活体形象」也打开，
+    // 否则用户开了摄像头却看到宠物一动不动，会以为功能坏了。
+    const extra = (on && el.livingPet && !el.livingPet.checked) ? { livingPet: true } : {};
+    if (extra.livingPet) { el.livingPet.checked = true; }
+    patch(Object.assign({ cameraMirror: on }, extra));
     api.sensorSetActive(on);
     updateCamStatusVisibility();
     if (on) refreshCamStatus();
   });
   // 摄像头状态实时更新
   api.on('hand:status', s => setCamBadge(s));
-  updateCamStatusVisibility();
-  if (cfg.cameraMirror) refreshCamStatus();
+  // ⚠️ 这里是同步初始化阶段，cfg 仍为 null（要到文件末尾 init 里 await getConfig 才有值）。
+  // 之前在此直接写 if (cfg.cameraMirror) → TypeError，整段 IIFE 中断，
+  // 导致后面导航绑定与 fill() 全部不执行（症状：设置页点不动、所有开关都是关）。
+  // 初始徽标改到 init 中 cfg 就绪后刷新。
 
   function updateCamStatusVisibility() {
-    if (el.camStatusRow) el.camStatusRow.hidden = !el.cameraMirror.checked;
+    if (el.camStatusRow) el.camStatusRow.hidden = !(el.cameraMirror && el.cameraMirror.checked);
   }
   function setCamBadge(s) {
     if (!el.camBadge) return;
     const map = {
       idle: ['摄像头：待命', 'off'],
       starting: ['摄像头：启动中…', 'warn'],
-      active: ['摄像头：已连接，比划一下试试', 'ok'],
+      active: ['摄像头：已连接，把手举到镜头前', 'ok'],
+      tracking: ['正在跟着你的手动 ✓', 'ok'],
       denied: ['摄像头：被拒绝，请在系统设置允许', 'warn'],
       nocamp: ['摄像头：未检测到摄像头', 'off'],
-      unavailable: ['手势模型加载失败（请检查网络或重开）', 'warn']
+      unavailable: ['手势模型加载失败（请检查网络或重开）', 'warn'],
+      noframe: ['摄像头已开但没有画面（可能被其它程序占用）', 'warn'],
+      noface: ['摄像头有画面但没识别到，把手举到镜头前', 'warn']
     };
     const [text, cls] = map[s] || ['摄像头：未知', 'off'];
     el.camBadge.textContent = text;
@@ -1409,6 +1418,9 @@
     buildCharacters();
     fill();
 
+    // cfg 就绪后再同步摄像头徽标（此时才允许读 cfg）
+    if (cfg.cameraMirror) refreshCamStatus();
+
     // 从右键菜单 / 托盘菜单深链进来的：?pane=weather 之类，直接切到对应 tab
     try {
       const pane = new URLSearchParams(location.search).get('pane');
@@ -1430,5 +1442,8 @@
       if (document.activeElement && document.activeElement.tagName === 'SELECT') return;
       fill();
     });
-  })();
+  })().catch(err => {
+    // 初始化失败时至少留下可排查的日志，不要静默把整个设置页废掉
+    try { console.error('[settings] 初始化失败：', err); } catch (_) {}
+  });
 })();

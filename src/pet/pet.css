@@ -302,6 +302,18 @@ html, body {
 .pet-wrap.living,
 .pet-wrap.living[class*="state-"] { animation: none !important; }
 
+/* 活体模式：只把原始立绘包一层，做整体形变。
+   ⚠️ 这里不要用 transform 以外的属性，也别改 object-fit ——
+   目标就是「形象还是原来那个，只是会动」。 */
+.live-body {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 92%;
+  will-change: transform;
+  pointer-events: none;
+}
+.live-body .layer { filter: drop-shadow(0 7px 12px rgba(28, 38, 58, .14)); }
+
 .live-svg { pointer-events: none; }
 
 /* 提醒举牌（语义：举着小牌子，文字来自提醒内容） */
