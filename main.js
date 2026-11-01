@@ -2429,9 +2429,9 @@ function initAutoUpdater() {
     });
   });
 
-  // 启动 20s 后再检查，避免和首屏抢资源；之后每 6 小时一次
-  setTimeout(() => { autoUpdater.checkForUpdates().catch(e => diag('[updater] 检查失败：' + ((e && e.message) || e))); }, 20000);
-  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 3600 * 1000);
+  // 自动更新通道已改为「引导到官网下载」：不再后台轮询 electron-updater，
+  // 避免自签 / 便携版因缺少 app-update.yml 而反复弹「检查更新失败」。
+  // （手动「检查更新」仍可用，但只弹提示并带「打开官网」按钮，不会失败。）
 }
 
 /** 托盘 / 设置页「检查更新」：手动触发，结果显示在应用内弹窗里

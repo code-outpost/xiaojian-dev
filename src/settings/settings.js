@@ -1305,22 +1305,10 @@
   document.getElementById('openConfig').addEventListener('click', () => api.openConfigFolder());
   document.getElementById('openSite').addEventListener('click', () => api.openExternal('https://code-outpost.github.io/xiaojian-dev/'));
 
-  /* 检查更新 */
+  /* 检查更新：直接打开官网下载页（不再走易失败的自动更新，永不报错） */
   const btnCheckUpdate = document.getElementById('btnCheckUpdate');
   if (btnCheckUpdate) {
-    btnCheckUpdate.addEventListener('click', async () => {
-      const hint = document.getElementById('aboutUpdateHint');
-      btnCheckUpdate.disabled = true;
-      if (hint) hint.textContent = '已弹出下载提示…';
-      try {
-        await api.checkUpdate();
-      } catch (e) {
-        if (hint) hint.textContent = '打开失败：' + ((e && e.message) || e);
-      } finally {
-        btnCheckUpdate.disabled = false;
-        if (hint) setTimeout(() => { hint.textContent = ''; }, 2600);
-      }
-    });
+    btnCheckUpdate.addEventListener('click', () => api.openExternal('https://code-outpost.github.io/xiaojian-dev/'));
   }
 
   /* 更新的所有提示统一走应用内弹窗（外观 = 反馈/确认框），不再用原生 dialog */
@@ -1329,9 +1317,6 @@
     const buttons = (Array.isArray(opts.buttons) && opts.buttons.length)
       ? opts.buttons
       : [{ id: 'ok', label: '知道了', primary: true }];
-    if (btnCheckUpdate) btnCheckUpdate.disabled = false;
-    const hint = document.getElementById('aboutUpdateHint');
-    if (hint) hint.textContent = '';
     showFbModal({
       kind: opts.kind || 'info',
       title: opts.title || '检查更新',
