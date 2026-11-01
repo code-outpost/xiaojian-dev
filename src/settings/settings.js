@@ -1303,6 +1303,7 @@
   document.getElementById('testStand').addEventListener('click', () => api.testReminder('stand'));
 
   document.getElementById('openConfig').addEventListener('click', () => api.openConfigFolder());
+  document.getElementById('openSite').addEventListener('click', () => api.openExternal('https://code-outpost.github.io/xiaojian-dev/'));
 
   /* 检查更新 */
   const btnCheckUpdate = document.getElementById('btnCheckUpdate');
@@ -1310,11 +1311,11 @@
     btnCheckUpdate.addEventListener('click', async () => {
       const hint = document.getElementById('aboutUpdateHint');
       btnCheckUpdate.disabled = true;
-      if (hint) hint.textContent = '正在检查…';
+      if (hint) hint.textContent = '已弹出下载提示…';
       try {
         await api.checkUpdate();
       } catch (e) {
-        if (hint) hint.textContent = '检查失败：' + ((e && e.message) || e);
+        if (hint) hint.textContent = '打开失败：' + ((e && e.message) || e);
       } finally {
         btnCheckUpdate.disabled = false;
         if (hint) setTimeout(() => { hint.textContent = ''; }, 2600);
@@ -1340,6 +1341,8 @@
         primary: !!b.primary,
         close: true,
         onClick: () => {
+          // 带 url 的按钮（如「打开官网」）直接外部打开；其余交给主进程
+          if (b.url) { api.openExternal(b.url); return; }
           // 'ok' / 'later' 只是关掉弹窗；'restart' 才真的要重启安装
           if (b.id && b.id !== 'ok' && b.id !== 'later') api.updateAction(b.id);
         }

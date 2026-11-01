@@ -2434,61 +2434,28 @@ function initAutoUpdater() {
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 3600 * 1000);
 }
 
-/** 托盘 / 设置页「检查更新」：手动触发，结果显示在应用内弹窗里 */
+/** 托盘 / 设置页「检查更新」：手动触发，结果显示在应用内弹窗里
+ *  —— 最新版本都在官网发布，这里不再走容易失败的 electron-updater，直接引导去官网下载 */
+const OFFICIAL_SITE = 'https://code-outpost.github.io/xiaojian-dev/';
 function checkUpdatesManual() {
   lastUpdateAskAt = Date.now();
   if (!app.isPackaged) {
     notifyUpdate({
       kind: 'warn',
       title: '开发模式下不检查更新',
-      text: '只有打包安装后的 Mochi 才能检查更新。'
+      text: '只有打包安装后的 Mochi 才能到官网下载更新。\n官网：' + OFFICIAL_SITE
     });
     return;
   }
-  const autoUpdater = getAutoUpdater();
-  if (!autoUpdater) {
-    notifyUpdate({
-      kind: 'error',
-      title: '自动更新模块未就绪',
-      text: '缺少 electron-updater，重装一次 Mochi 就能恢复。'
-    });
-    return;
-  }
-  if (updateBusy) {
-    notifyUpdate({
-      kind: 'info',
-      title: '正在下载新版本',
-      text: '上一轮还在下载/安装准备中，完成后会自动提醒你重启。'
-    });
-    return;
-  }
-  // 检查可能要十几秒，先让宠物说一句，免得点了像没反应
-  sendPet('pet:say', { text: '我去看看有没有新版本…', ms: 3000 });
-  const cur = app.getVersion();
-  updateBusy = true;
-  autoUpdater.checkForUpdates().then(r => {
-    const remote = r && r.updateInfo && r.updateInfo.version;
-    if (!remote || remote === cur) {
-      updateBusy = false;
-      notifyUpdate({
-        kind: 'info',
-        title: '已是最新版本',
-        text: `当前版本 v${cur}，暂时没有新版本。`
-      });
-    } else {
-      notifyUpdate({
-        kind: 'info',
-        title: `发现新版本 v${remote}`,
-        text: `当前版本 v${cur}。新版正在后台下载（约 80MB），装好后会弹出「立即重启」的提示。`
-      });
-    }
-  }).catch(e => {
-    updateBusy = false;
-    notifyUpdate({
-      kind: 'error',
-      title: '检查更新失败',
-      text: friendlyUpdateError((e && e.message) || e)
-    });
+  // 最新版本都在官网发布，弹窗引导过去；「打开官网 ↗」按钮直接跳下载页
+  notifyUpdate({
+    kind: 'info',
+    title: '前往官网下载最新版',
+    text: 'Mochi 的最新版本都会先在官网发布。点下面的「打开官网」即可跳到下载页，覆盖安装就行。',
+    buttons: [
+      { id: 'site', label: '打开官网 ↗', primary: true, url: OFFICIAL_SITE },
+      { id: 'ok', label: '稍后再说' }
+    ]
   });
 }
 
@@ -2655,7 +2622,10 @@ function registerIpc() {
     const cy = Math.max(0, Math.min(1, 1 - (ny0 * 0.5 + 0.5))); // 手举高(+1) → 顶部(0)
     const tx = a.x + gap + cx * innerW;
     const ty = a.y + gap + cy * innerH;
-    petSetPos(tx, ty, false);
+    // 硬夹取：无论手坐标怎么越界、多屏边界怎么切，宠物窗口四边都完整留在某块屏幕的可用区里，
+    // 绝不会跑到屏幕外 / 压到任务栏。同时让宠物能跟着手自然跨屏（目标落在哪块屏就夹到哪块屏）。
+    const c = clampToNearestWorkArea(tx, ty);
+    petSetPos(c.x, c.y, false);
   });
 
   ipcMain.on('pet:drag-start', () => startPetDrag());
@@ -2975,6 +2945,13 @@ function registerIpc() {
   });
 
   ipcMain.on('open:config-file', () => shell.openPath(DATA_DIR));
+
+  // 打开外部链接（官网 / 下载页等）。只在渲染层主动调用时触发，且严格限定 http(s)，避免被注入乱跳。
+  ipcMain.on('open:external', (_e, url) => {
+    if (typeof url === 'string' && /^https?:\/\//i.test(url.trim())) {
+      try { shell.openExternal(url.trim()); } catch (_) {}
+    }
+  });
 }
 
 function applyAutoLaunch(on) {

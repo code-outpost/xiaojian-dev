@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld('mochi', {
   /* 系统 */
   setAutoLaunch: on => send('autolaunch:set', !!on),
   openConfigFolder: () => send('open:config-file'),
+  openExternal: (url) => send('open:external', url),
 
   /* 数据保存位置（可自定义，不再强制 C 盘） */
   dataLocation: () => invoke('data:location'),

@@ -84,6 +84,19 @@
   .author h3{font-size:20px;margin-bottom:4px}
   .author .role{color:var(--pink-deep);font-weight:700;font-size:14px;margin-bottom:8px}
   .author p{color:var(--ink-2);font-size:15px}
+  /* 更新日志 */
+  .log{display:flex;flex-direction:column;gap:0;max-width:760px;margin:0 auto}
+  .log-item{display:flex;gap:18px;padding:20px 0;border-bottom:1px solid var(--line)}
+  .log-item:first-child{padding-top:4px}
+  .log-item:last-child{border-bottom:none}
+  .log-ver{flex:none;width:92px;font-weight:900;color:var(--pink-deep);font-size:16px;position:relative;padding-left:18px;line-height:1.5}
+  .log-ver::before{content:"";position:absolute;left:0;top:7px;width:9px;height:9px;border-radius:50%;background:var(--pink)}
+  .log-body{flex:1}
+  .log-date{font-size:13px;color:var(--ink-3);margin-bottom:8px}
+  .log-body ul{margin:0;padding-left:20px}
+  .log-body li{color:var(--ink-2);font-size:14.5px;margin-bottom:6px;line-height:1.7}
+  .log-tag{display:inline-block;background:var(--soft);color:var(--pink-deep);border:1px solid var(--line);
+    border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin-left:8px;vertical-align:middle}
   /* 隐私 */
   .privacy{font-size:14px;color:var(--ink-2);background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px}
   .privacy b{color:var(--ink)}
@@ -108,6 +121,7 @@
     <nav class="nav-links">
       <a href="#features">功能</a>
       <a href="#chars">角色</a>
+      <a href="#changelog">更新日志</a>
       <a href="#download">下载</a>
       <a href="#author">关于作者</a>
     </nav>
@@ -188,17 +202,65 @@
     也可以在设置里上传你自己的图片，做成专属角色。</p>
 </section>
 
+<section id="changelog" class="wrap">
+  <h2 class="sec-title">更新日志</h2>
+  <p class="sec-sub">每次更新都在这儿记一笔，想看完整历史去 <a href="https://github.com/code-outpost/xiaojian-dev/releases">GitHub Releases</a></p>
+  <div class="log">
+    <div class="log-item">
+      <div class="log-ver">v1.0.3<span class="log-tag">最新</span></div>
+      <div class="log-body">
+        <div class="log-date">2026-11-01</div>
+        <ul>
+          <li>🤚 <b>摄像头手势镜像升级</b>：手左右挥，宠物跟着镜像倾斜 + 摆动；把手推近 → 宠物放大，拉远 → 缩小（景深玩法）</li>
+          <li>🎭 多种手势动作：握拳跳、张开挥手、食指指向、比心，换手势才触发一次</li>
+          <li>⚡ 启动优化：摄像头窗口与协议改为首次需要时懒加载，打开速度明显变快</li>
+          <li>🐞 修好活体宠物空白、摄像头不生效、设置页点不动等问题</li>
+        </ul>
+      </div>
+    </div>
+    <div class="log-item">
+      <div class="log-ver">v1.0.2</div>
+      <div class="log-body">
+        <div class="log-date">2026-10</div>
+        <ul>
+          <li>场景感知稳定性优化，减少识别不到的情况</li>
+          <li>若干体验与细节修复</li>
+        </ul>
+      </div>
+    </div>
+    <div class="log-item">
+      <div class="log-ver">v1.0.1</div>
+      <div class="log-body">
+        <div class="log-date">2026-10</div>
+        <ul>
+          <li>首次公开发布：角色选择、温柔健康提醒、AI 闲聊、桌面天气、自定义形象、隐私优先的场景感知</li>
+        </ul>
+      </div>
+    </div>
+    <div class="log-item">
+      <div class="log-ver">v1.0.0</div>
+      <div class="log-body">
+        <div class="log-date">2026-10</div>
+        <ul>
+          <li>第一个稳定版本，Mochi 正式和大家见面 🐾</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="download" class="wrap">
   <div class="download">
     <h2>免费下载 Mochi</h2>
-    <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 自动更新</p>
+    <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 可到官网 / 设置里获取最新版</p>
     <div class="dl-btns">
       <a class="btn btn-primary" href="#" data-dl="setup">⬇ 安装版（推荐）</a>
       <a class="btn btn-ghost" href="#" data-dl="portable">📦 便携单文件版</a>
       <a class="btn btn-ghost" href="#" data-dl="releases">⤴ 所有版本 / GitHub</a>
     </div>
     <p class="dl-note">
-      安装版装一次、启动最快、可自动更新；便携版是单个 <code>.exe</code>，拷到任何地方双击即用。<br/>
+      安装版装一次、启动最快；便携版是单个 <code>.exe</code>，拷到任何地方双击即用。<br/>
+      新版本都会先在官网发布，安装版也可在「设置 → 关于 → 检查更新」里一键跳转到官网下载覆盖安装。<br/>
       若浏览器提示"未知发布者"，属正常现象（软件未付费购买代码签名证书），点"仍要运行"即可。
     </p>
   </div>
