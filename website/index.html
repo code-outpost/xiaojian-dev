@@ -208,7 +208,19 @@
   <p class="sec-sub">每次更新都在这儿记一笔，想看完整历史去 <a href="https://github.com/code-outpost/xiaojian-dev/releases">GitHub Releases</a></p>
   <div class="log">
     <div class="log-item">
-      <div class="log-ver">v1.0.3<span class="log-tag">最新</span></div>
+      <div class="log-ver">v1.0.4<span class="log-tag">最新</span></div>
+      <div class="log-body">
+        <div class="log-date">2026-11-03</div>
+        <ul>
+          <li>🔖 <b>版本号统一</b>：应用内「关于」与官网下载版本号正式对齐到 v1.0.4（此前官网/应用内版本号展示不一致的问题已修正）</li>
+          <li>📦 整合 v1.0.3 的全部改进并在此基础上统一发布：摄像头手势镜像（挥手跟随 + 推近 / 拉远景深）、多种手势动作、跟随不再越界、叫回修复、右键菜单完整恢复、宠物大小裁切修复</li>
+          <li>🛡️ 活体引擎自愈（单帧异常不再永久变静态立绘）、缩放体验升级（复位 100% + 预览小图 + 百分比气泡）、自定义形象也能"活"、跟随更跟手、托盘菜单提速</li>
+          <li>🐾 这是把近期所有功能整合后的稳定版本，建议所有用户升级到 v1.0.4 以获得完整特性</li>
+        </ul>
+      </div>
+    </div>
+    <div class="log-item">
+      <div class="log-ver">v1.0.3</div>
       <div class="log-body">
         <div class="log-date">2026-11-03</div>
         <ul>
@@ -263,7 +275,7 @@
 
 <section id="download" class="wrap">
   <div class="download">
-    <h2>免费下载 Mochi <span class="ver-pill">v1.0.3</span></h2>
+    <h2>免费下载 Mochi <span class="ver-pill">v1.0.4</span></h2>
     <p style="color:var(--ink-2);margin-top:8px">支持 Windows 10 / 11 · 免费 · 当前最新稳定版</p>
     <div class="dl-btns">
       <a class="btn btn-primary" href="#" data-dl="setup">⬇ 安装版（推荐）</a>
@@ -309,7 +321,7 @@
  *    VERSION = 当前版本号（要和 package.json 的 version 一致）
  * ============================================================ */
 const REPO = 'code-outpost/xiaojian-dev';
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 
 const BASE = 'https://github.com/' + REPO;
 document.querySelectorAll('[data-dl]').forEach(function (a) {
