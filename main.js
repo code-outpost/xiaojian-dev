@@ -190,8 +190,13 @@ function deepMerge(base, patch) {
 let config = deepMerge(DEFAULT_CONFIG, {});
 
 /* ---------- 运行时角色表（基础 + 自定义 + 台词覆盖） ---------- */
-function RCM() { return DATA.runtimeCharacters(config).map; }
-function RCIds() { return DATA.runtimeCharacters(config).ids; }
+/* 角色表构建（合并自定义 + 台词覆盖）有一定开销，加一层缓存：
+ * 只在配置真正变化（patchConfig / 增删自定义形象）时失效，避免每次刷新托盘菜单都重建一遍。 */
+let _rcmCache = null;
+function _rebuildRCM() { _rcmCache = DATA.runtimeCharacters(config); }
+function RCM() { if (!_rcmCache) _rebuildRCM(); return _rcmCache.map; }
+function RCIds() { if (!_rcmCache) _rebuildRCM(); return _rcmCache.ids; }
+function invalidateRCM() { _rcmCache = null; }
 
 function customDir() { return path.join(DATA_DIR, 'custom'); }
 function toFileUrl(p) { return 'file:///' + String(p).replace(/\\/g, '/'); }
@@ -423,6 +428,7 @@ function saveCustom(def) {
   const list = (config.customCharacters || []).filter(c => c.id !== def.id);
   list.push(cc);
   config = deepMerge(config, { customCharacters: list });
+  invalidateRCM();
   saveConfig();
   broadcast('cfg:changed', config);
   refreshTray();
@@ -432,6 +438,7 @@ function saveCustom(def) {
 function removeCustom(id) {
   const list = (config.customCharacters || []).filter(c => c.id !== id);
   config = deepMerge(config, { customCharacters: list });
+  invalidateRCM();
   try { fs.rmSync(path.join(customDir(), id), { recursive: true, force: true }); } catch (_) { /* ignore */ }
   if (config.character === id) {
     config = deepMerge(config, { character: 'cat' });
@@ -497,6 +504,7 @@ function patchConfig(patch) {
   } else {
     config = deepMerge(config, patch);
   }
+  invalidateRCM();   // 配置（含角色 / 台词覆盖 / 自定义形象）变化后，刷新运行时角色表缓存
   saveConfig();
   broadcast('cfg:changed', config);
   refreshTray();
@@ -514,8 +522,8 @@ function patchConfig(patch) {
 /* ------------------------------------------------------------------ *
  * 窗口
  * ------------------------------------------------------------------ */
-const PET_W = 360;
-const PET_H = 440;
+const PET_W = 460;
+const PET_H = 500;
 
 /** @type {BrowserWindow|null} */ let petWin = null;
 /** @type {BrowserWindow|null} */ let onboardWin = null;
@@ -1194,6 +1202,34 @@ function trayImage() {
   return charIcon(32) || undefined;
 }
 
+/* 托盘 / 宠物右键菜单缓存：菜单里只有少数几项会随状态变（当前角色、提醒风格、
+ * 各提醒开关、天气开关、天气文案、显示/隐藏），用「签名」比对——签名没变就复用上一次
+ * 构建好的 Menu 实例，避免每次 refreshTray 都整体重建（含角色列表 / 天气 / 提醒子菜单）。 */
+let _trayMenuCache = null;
+let _traySig = '';
+function traySig() {
+  const w = config.water || {}, st = config.stand || {}, pm = config.pomodoro || {}, cm = config.commute || {};
+  return [
+    config.character, config.reminderStyle,
+    !!(w.on), w.interval,
+    !!(st.on), st.interval,
+    !!(pm.on), pm.focus,
+    !!(cm.on), cm.clockIn, cm.clockOut,
+    !!(config.scene && config.scene.on),
+    !!(config.weather && config.weather.on),
+    lastWeather ? (lastWeather.city + '|' + lastWeather.text + '|' + lastWeather.temp) : '',
+    petVisible ? 1 : 0
+  ].join('|');
+}
+function getTrayMenu() {
+  const sig = traySig();
+  if (sig !== _traySig || !_trayMenuCache) {
+    _traySig = sig;
+    _trayMenuCache = buildTrayMenu();
+  }
+  return _trayMenuCache;
+}
+
 function buildTrayMenu() {
   const map = RCM();
   const chars = RCIds().map(id => {
@@ -1294,7 +1330,7 @@ function buildTrayMenu() {
 
 function refreshTray() {
   if (!tray) return;
-  tray.setContextMenu(buildTrayMenu());
+  tray.setContextMenu(getTrayMenu());
   tray.setToolTip(`Mochi · ${(RCM()[config.character] || {}).name || 'Mochi'}`);
   const ic = trayImage();
   if (ic) { try { tray.setImage(ic); } catch (_) { /* ignore */ } }
@@ -2646,12 +2682,21 @@ function registerIpc() {
     const d = screen.getDisplayNearestPoint({ x: Math.round(b.x + PET_W / 2), y: Math.round(b.y + PET_H / 2) });
     const a = d.workArea;
     const gap = 6;
+    // 宠物视觉尺寸（受桌面缩放影响）：图片高 = 250 * scale，底部对齐窗口底边，
+    // 因此宠物「中心」相对窗口左上角的纵向偏移 = 窗口高 - 宠物高/2。
+    // 跟随时让「宠物中心」直接落向手的位置，而不是把窗口左上角当锚点，跟手更自然。
+    const petH = 250 * (config.scale || 1);
+    const petCenterX = PET_W / 2;
+    const petCenterY = PET_H - petH / 2;
     const innerW = Math.max(0, a.width - PET_W - gap * 2);
     const innerH = Math.max(0, a.height - PET_H - gap * 2);
-    const cx = Math.max(0, Math.min(1, nx0 * 0.5 + 0.5));   // -1..1 → 0..1
+    const cx = Math.max(0, Math.min(1, nx0 * 0.5 + 0.5));   // -1..1 → 0..1（左..右）
     const cy = Math.max(0, Math.min(1, 1 - (ny0 * 0.5 + 0.5))); // 手举高(+1) → 顶部(0)
-    const tx = a.x + gap + cx * innerW;
-    const ty = a.y + gap + cy * innerH;
+    // 先算「手在 workArea 内的像素位置」（已把窗口整只留在可用区），再反推窗口左上角
+    const handX = a.x + gap + petCenterX + cx * innerW;
+    const handY = a.y + gap + petCenterY + cy * innerH;
+    const tx = handX - petCenterX;
+    const ty = handY - petCenterY;
     // 硬夹取：无论手坐标怎么越界、多屏边界怎么切，宠物窗口四边都完整留在某块屏幕的可用区里，
     // 绝不会跑到屏幕外 / 压到任务栏。同时让宠物能跟着手自然跨屏（目标落在哪块屏就夹到哪块屏）。
     const c = clampToNearestWorkArea(tx, ty);
@@ -2696,18 +2741,25 @@ function registerIpc() {
   });
 
   ipcMain.on('pet:menu', () => {
-    // 宠物身上右键：弹独立小菜单，明确带「叫回眼前」。
-    // 不再依赖 tray.popUpContextMenu()（托盘图标异常时整个菜单都弹不出来，
-    // 用户就会觉得「右键也不可以」）。
-    const m = Menu.buildFromTemplate([
-      { label: '🔎 把宠物叫回眼前', click: recallPet },
-      { type: 'separator' },
-      { label: '💬 和我聊聊（AI）', click: openAI },
-      { label: '⚙️ 设置', click: () => openSettings() },
-      { type: 'separator' },
-      { label: petVisible ? '隐藏 Mochi' : '显示 Mochi', click: togglePet }
-    ]);
-    m.popup();
+    // 宠物身上右键：直接复用完整托盘菜单模板（buildTrayMenu 是纯构建函数，
+    // 不依赖托盘图标状态，托盘图标异常时照样能弹出来，避免「右键也不可以」）。
+    // 这样角色切换 / 钢琴 / 场景 / 提醒 / 天气 / 设置 / 检查更新 / 退出等
+    // 全部入口都回来了，同时保留「把宠物叫回眼前」这一项。
+    try {
+      const m = getTrayMenu();
+      if (petWin && !petWin.isDestroyed()) m.popup({ window: petWin });
+      else m.popup();
+    } catch (_) {
+      // 兜底：万一模板构建出错，至少保留最关键的叫回 + 设置两条
+      const fb = Menu.buildFromTemplate([
+        { label: '🔎 把宠物叫回眼前（Ctrl+Alt+R）', click: recallPet },
+        { type: 'separator' },
+        { label: '⚙️ 设置', click: () => openSettings() },
+        { label: '💬 和我聊聊（AI）', click: openAI }
+      ]);
+      if (petWin && !petWin.isDestroyed()) fb.popup({ window: petWin });
+      else fb.popup();
+    }
   });
 
   ipcMain.on('pet:hi', () => {

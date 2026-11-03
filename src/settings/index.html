@@ -153,9 +153,17 @@
                 <div class="hint">也可以 Ctrl + 滚轮直接在桌面上缩放</div>
               </div>
               <div class="slider-wrap">
-                <input type="range" id="scale" min="0.75" max="1.5" step="0.05">
+                <input type="range" id="scale" min="0.75" max="1.4" step="0.05">
                 <span class="slider-val" id="scaleVal">100%</span>
+                <button class="btn btn-ghost btn-sm" id="scaleReset" type="button">复位 100%</button>
               </div>
+            </div>
+
+            <div class="scale-preview-wrap">
+              <div class="scale-preview" id="scalePreviewBox">
+                <img id="scalePreview" alt="">
+              </div>
+              <div class="scale-preview-tip">实时预览（所见即所得）</div>
             </div>
           </div>
 
@@ -164,7 +172,7 @@
             <div class="row">
               <div>
                 <div class="label">活体宠物</div>
-                <div class="hint">开启后宠物变成会呼吸、有情绪、会做各种小动作的「活物」；自定义形象仍使用静态立绘</div>
+                <div class="hint">开启后宠物变成会呼吸、有情绪、会做各种小动作的「活物」；自定义形象同样会动（呼吸 / 情绪 / 摄像头手势）</div>
               </div>
               <label class="switch"><input type="checkbox" id="livingPet"><span class="track"></span></label>
             </div>

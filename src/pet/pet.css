@@ -316,6 +316,28 @@ html, body {
 
 .live-svg { pointer-events: none; }
 
+/* ---------------- 桌面缩放百分比气泡 ---------------- */
+.zoom-hud {
+  position: absolute;
+  left: 50%;
+  top: 13%;
+  transform: translateX(-50%) scale(.92);
+  padding: 4px 13px;
+  border-radius: 999px;
+  background: rgba(20, 30, 50, .8);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 6px 16px rgba(20, 30, 50, .28);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s ease, transform .25s cubic-bezier(.2, 1.4, .4, 1);
+  z-index: 30;
+}
+.zoom-hud.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
 /* 提醒举牌（语义：举着小牌子，文字来自提醒内容） */
 .live-sign {
   position: absolute;

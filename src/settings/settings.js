@@ -36,6 +36,9 @@
     showStats: $('#showStats'),
     scale: $('#scale'),
     scaleVal: $('#scaleVal'),
+    scaleReset: $('#scaleReset'),
+    scalePreview: $('#scalePreview'),
+    scalePreviewBox: $('#scalePreviewBox'),
     charList: $('#charList'),
     waterOn: $('#waterOn'),
     waterInterval: $('#waterInterval'),
@@ -254,6 +257,18 @@
     el.brandSlogan.textContent = c.slogan;
     el.aboutImg.src = D.spriteUrl(c, 'idle');
     document.title = `Mochi 设置 · ${c.name}`;
+  }
+
+  /** 宠物大小预览：用当前角色待机图，按 scale 等比缩放，所见即所得 */
+  function updateScalePreview() {
+    if (!el.scalePreview || !cfg) return;
+    const map = D.runtimeCharacters(cfg).map;
+    const c = map[cfg.character] || D.CHARACTERS.cat;
+    const url = D.spriteUrl(c, 'idle');
+    if (url && el.scalePreview.getAttribute('src') !== url) el.scalePreview.src = url;
+    const s = cfg.scale || 1;
+    // 预览基准 64px，乘 scale 直接反映相对大小（不会溢出卡片）
+    el.scalePreviewBox.style.height = `${Math.round(64 * s)}px`;
   }
 
   /* ---------------- 角色列表 ---------------- */
@@ -708,6 +723,7 @@
     fillAI(ai);
     el.scale.value = cfg.scale || 1;
     el.scaleVal.textContent = `${Math.round((cfg.scale || 1) * 100)}%`;
+    updateScalePreview();
 
     el.waterOn.checked = !!cfg.water.on;
     el.waterInterval.value = cfg.water.interval;
@@ -914,8 +930,18 @@
   el.scale.addEventListener('input', () => {
     const v = Number(el.scale.value);
     el.scaleVal.textContent = `${Math.round(v * 100)}%`;
+    cfg.scale = v;
+    updateScalePreview();
   });
   el.scale.addEventListener('change', () => patch({ scale: Number(el.scale.value) }));
+  if (el.scaleReset) el.scaleReset.addEventListener('click', () => {
+    el.scale.value = 1;
+    el.scaleVal.textContent = '100%';
+    cfg.scale = 1;
+    updateScalePreview();
+    patch({ scale: 1 });
+    toast('已复位到 100%');
+  });
 
   el.waterOn.addEventListener('change', () => patch({ water: { on: el.waterOn.checked } }).then(fill));
   el.waterInterval.addEventListener('change', () => patch({ water: { interval: Number(el.waterInterval.value) } }).then(fill));

@@ -191,6 +191,44 @@ input[type="range"]::-webkit-slider-thumb {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* 小号按钮（如「复位 100%」） */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  border-radius: 9px;
+}
+
+/* 宠物大小实时预览：所见即所得 */
+.scale-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .5);
+  box-shadow: 0 0 0 1px rgba(20, 30, 50, .05) inset;
+}
+.scale-preview {
+  width: 64px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: visible;
+}
+.scale-preview img {
+  max-width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(28, 38, 58, .18));
+  transition: height .12s ease;
+}
+.scale-preview-tip {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
 
 /* select */
 select {

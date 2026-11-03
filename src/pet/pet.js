@@ -14,6 +14,7 @@
   const bubbleText = $('#bubbleText');
   const bubbleActions = $('#bubbleActions');
   const petWrap = $('#petWrap');
+  const zoomHud = $('#zoomHud');
   const heartsEl = $('#hearts');
   const statsEl = $('#stats');
   const layers = [document.querySelector('#layerA'), document.querySelector('#layerB')];
@@ -62,8 +63,9 @@
     applyScale();
     updateStats(cfg.stats, false);
 
-    // 活体引擎：内置角色默认启用（自定义形象无骨骼素材，自动回退静态立绘）
-    if (cfg.livingPet !== false && !char.custom) buildLive(char);
+    // 活体引擎：默认启用（内置与自定义形象都接「原立绘整体形变」轻量活体，不重画，
+    // 因此自定义上传图也能呼吸、跟随手势、有推进/拉远景深；缺图时自动回退内置形象）。
+    if (cfg.livingPet !== false) buildLive(char);
     statsEl.classList.toggle('always', !!cfg.showStats);
     Sound.setEnabled(cfg.sound !== false);
 
@@ -445,10 +447,21 @@
     window.addEventListener('wheel', e => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      scale = Math.min(1.5, Math.max(0.75, +(scale + (e.deltaY > 0 ? -0.05 : 0.05)).toFixed(2)));
+      scale = Math.min(1.4, Math.max(0.75, +(scale + (e.deltaY > 0 ? -0.05 : 0.05)).toFixed(2)));
       applyScale();
+      showZoomHud();
       api.patchConfig({ scale });
     }, { passive: false });
+
+    // 桌面缩放时弹一个实时百分比气泡，1.1s 后自动消失
+    let zoomHudTimer = null;
+    function showZoomHud() {
+      if (!zoomHud) return;
+      zoomHud.textContent = Math.round(scale * 100) + '%';
+      zoomHud.classList.add('show');
+      clearTimeout(zoomHudTimer);
+      zoomHudTimer = setTimeout(() => zoomHud.classList.remove('show'), 1100);
+    }
 
     // 鼠标穿透：只有角色 / 气泡区域可点
     document.addEventListener('mousemove', e => {
@@ -533,8 +546,8 @@
       visibleState = '';
       setSprite(computeState());
       D.STATE_LIST.forEach(s => { const i = new Image(); i.src = ASSET(s); });
-      // 活体引擎随角色重建（自定义形象自动回退静态立绘）
-      if (live || (cfg.livingPet !== false && !char.custom)) buildLive(char);
+      // 活体引擎随角色重建（自定义形象同样接轻量活体；缺图时自动回退内置形象）
+      if (live || cfg.livingPet !== false) buildLive(char);
       if (!live) { visibleState = ''; setSprite(computeState()); }
     });
 
@@ -559,7 +572,7 @@
       // 活体 / 摄像头开关切换
       if (c.livingPet !== undefined) {
         if (c.livingPet === false && live) { live.destroy(); live = null; petWrap.classList.remove('living'); visibleState = ''; setSprite(computeState()); }
-        else if (c.livingPet !== false && !live && !char.custom) { buildLive(char); }
+        else if (c.livingPet !== false && !live) { buildLive(char); }
       }
       if (c.cameraMirror !== undefined && live) live.setCameraMirror(!!c.cameraMirror);
     });

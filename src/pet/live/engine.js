@@ -52,6 +52,12 @@
     this.running = false;
     this.raf = 0;
     this.last = 0;
+    this._errs = 0;            // 连续异常帧计数（用于退避自动恢复）
+    this._okFrames = 0;        // 连续正常帧计数（用于复位退避）
+    this._recoverAttempts = 0; // 已尝试自动恢复次数（指数退避上限）
+    this._recoverTimer = 0;
+    this._degraded = false;    // 是否已因连续异常暂停渲染
+    this._destroyed = false;
 
     // 摄像头手势
     this.cameraMirror = false;
@@ -70,7 +76,7 @@
     this._hxRaw = 0; this._hyRaw = 0;   // 上一帧手掌原始归一化位置（未钳制）
     this.handVelX = 0; this.handVelY = 0; // 平滑后的手部速度（用于挥手镜像）
     // 景深（push/pull）：手离摄像头越近 size 越大 → 宠物越大
-    this._size = 0.2;             // 平滑后的手掌尺度
+    this._size = 0.28;            // 平滑后的手掌尺度（0.28≈常见手距，作为景深缩放的 1.0 基准）
     this._handLive = false;       // 上一帧是否检测到手（用于消除「手刚出现」的速度毛刺）
 
     // 状态
@@ -93,6 +99,8 @@
   LivePet.prototype.start = function () {
     if (this.running) return;
     this.running = true;
+    this._degraded = false;
+    this._errs = 0;
     this.last = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     const loop = (now) => {
       if (!this.running) return;
@@ -100,15 +108,51 @@
       this.last = now;
       try {
         this.frame(dt);
+        // 连续正常帧足够久 → 视作已稳定，复位退避计数（避免一次性的偶发抖动后越退越久）
+        this._errs = 0;
+        if (this._recoverAttempts && ++this._okFrames > 180) {
+          this._okFrames = 0;
+          this._recoverAttempts = 0;
+        }
       } catch (e) {
-        // 单帧出错不能让整只宠物消失：停掉引擎并让 pet.js 回退
-        console.error('[mochi] 活体引擎单帧异常，已停止：', e);
-        this.destroy();
-        return;
+        this._errs++;
+        if (this._errs <= 8) {
+          console.warn('[mochi] 活体引擎单帧异常（已跳过该帧，不会停掉整只宠物）：', e);
+        }
+        // 连续异常过多：暂停渲染并退避后自动重启，而不是永久退化成静态立绘
+        if (this._errs > 30) {
+          this._suspendForRecovery(e);
+          return;
+        }
       }
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
+  };
+
+  /**
+   * 连续异常过多时的「优雅暂停 + 自动恢复」：
+   * 不清空 DOM、不退化成静态立绘——只暂停渲染循环，退避一段时间后自动 restart()。
+   * 退避按指数增长（上限 8s），最多尝试 6 次；仍不行就保持暂停（宠物仍可见，只是暂不动），
+   * 不再刷屏；用户重启应用即可彻底恢复。
+   */
+  LivePet.prototype._suspendForRecovery = function (e) {
+    this.running = false;
+    this._degraded = true;
+    console.error('[mochi] 活体引擎连续异常过多，已暂停渲染并安排自动恢复：', e);
+    const backoff = Math.min(8000, 1000 * Math.pow(1.6, this._recoverAttempts || 0));
+    this._recoverAttempts = (this._recoverAttempts || 0) + 1;
+    if (this._recoverAttempts <= 6) {
+      const self = this;
+      this._recoverTimer = setTimeout(() => {
+        self._recoverTimer = 0;
+        if (self._destroyed || !self.body || !self.container) return;
+        console.warn('[mochi] 活体引擎自动恢复中（第 ' + self._recoverAttempts + ' 次尝试）');
+        self.start();
+      }, backoff);
+    } else {
+      console.error('[mochi] 活体引擎多次自动恢复失败，保持暂停（宠物仍可见，只是暂不动）。重启应用可彻底恢复。');
+    }
   };
 
   LivePet.prototype.stop = function () {
@@ -117,7 +161,9 @@
   };
 
   LivePet.prototype.destroy = function () {
+    this._destroyed = true;
     this.stop();
+    if (this._recoverTimer) { try { clearTimeout(this._recoverTimer); } catch (_) {} this._recoverTimer = 0; }
     if (this.signEl && this.signEl.parentNode) this.signEl.parentNode.removeChild(this.signEl);
     this.signEl = null;
     // 把立绘放回原位，保证退回静态模式时结构完全复原
@@ -248,9 +294,9 @@
     s.x = damp(s.x, x, L, dt);
     s.y = damp(s.y, y, L, dt);
     s.rot = damp(s.rot, rot, L, dt);
-    // 放宽到 0.5..1.7，给「推进/拉远」景深缩放留出空间（手很近时宠物可放大到 1.6 倍）
-    s.sx = damp(s.sx, clamp(sx, 0.5, 1.7), L, dt);
-    s.sy = damp(s.sy, clamp(sy, 0.5, 1.7), L, dt);
+    // 夹到 [0.78, 1.28]：保证「手势景深 + 设置缩放(≤1.4)」叠加后宠物仍完整留在窗口内不被裁切
+    s.sx = damp(s.sx, clamp(sx, 0.78, 1.28), L, dt);
+    s.sy = damp(s.sy, clamp(sy, 0.78, 1.28), L, dt);
     s.breath = breath;
     s.bob = bobAmp;
 
@@ -319,10 +365,12 @@
     let sx = 1 - hy * 0.08 + (open - 0.5) * 0.12 + move * 0.05 + PERK - pi * 0.05;
 
     // 自定义玩法：手推进/拉远 → 宠物放大/缩小（push/pull 景深效果）
-    // 手越近 size 越大 → sizeK 越大 → 宠物越大（像凑近你）；手越远越小（像退远）。
-    this._size = this._size * 0.85 + (h.size != null ? h.size : 0.2) * 0.15;
-    const prox = clamp((this._size - 0.10) / 0.32, 0, 1);  // 0(远) .. 1(近)
-    const sizeK = 0.55 + prox * 1.05;                       // 0.55(远) .. 1.60(近)
+    // ⚠️ 以「常见手距 ≈ 0.28」为基准映射到 1.0：远一点略小、近一点略大，
+    // 而不是从 0.55 起跳——否则手一进画面宠物先「缩水」一下，且 1.6 倍会超出
+    // 宠物窗口被裁切（窗口宽 460 / 宠物 250px，1.6 倍≈400px 已接近溢出）。
+    this._size = this._size * 0.85 + (h.size != null ? h.size : 0.28) * 0.15;
+    // 常见手距附近 ≈ 1.0，范围约 [0.83, 1.25]；叠加其它形变后再由 frame() 统一夹到 [0.78,1.28]
+    const sizeK = clamp(1 + (this._size - 0.28) * 1.7, 0.83, 1.25);
     sx *= sizeK; sy *= sizeK;
 
     return { x, y, rot, sx, sy };
